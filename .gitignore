@@ -16,3 +16,11 @@ __pycache__/
 # 결과물
 output/
 *.log
+
+# 파이썬 패키징/도구 캐시
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+
+# Streamlit (로컬 시크릿은 절대 커밋 금지)
+.streamlit/secrets.toml
