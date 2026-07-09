@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "id": "mcp",
+  "tech_name": "MCP (모델 컨텍스트 프로토콜, Model Context Protocol)",
+  "first_seen": "2026-07-08",
+  "status": "sample",
+  "one_liner": "LLM 애플리케이션이 외부 도구·데이터 소스에 연결하는 방식을 표준화한 개방형 프로토콜 — 'AI를 위한 USB-C'로 비유된다 [S1].",
+  "metrics": {
+    "atomic_support_rate": 0.81,
+    "citation_precision": 0.79,
+    "citation_recall": 0.72,
+    "ragas_faithfulness": 0.83,
+    "source_count": 2
+  },
+  "sections": {
+    "skeleton": "MCP는 클라이언트-서버 구조다. AI 앱(호스트) 안의 MCP 클라이언트가, 도구·데이터를 노출하는 MCP 서버에 표준 메시지로 연결한다. 서버는 세 가지를 제공할 수 있다: 도구(tools, 실행 가능한 함수), 리소스(resources, 읽을 수 있는 데이터), 프롬프트(prompts, 재사용 템플릿) [S1][S2].",
+    "background": "LLM에 외부 기능을 붙일 때마다 각 앱·각 도구가 제각각의 커스텀 연동을 만들어야 하는 'M×N 통합 지옥'이 있었다. Anthropic이 2024년 말 이를 표준 프로토콜로 풀자며 MCP를 공개하고 오픈소스로 내놨다 [S1].",
+    "contrast_analogy": "함수 호출(function calling)과 자주 헷갈린다. 함수 호출이 '한 모델이 이번 대화에서 어떤 함수를 부를지 고르는' 모델 수준의 기능이라면, MCP는 그 함수·데이터를 '어떤 앱에서든 꽂아 쓸 수 있게' 만드는 앱 수준의 연결 규격이다. USB-C 비유가 이 지점을 노린다: 포트 모양(프로토콜)을 통일하면 기기(도구)와 컴퓨터(AI 앱)가 서로 몰라도 연결된다 [S1][S2].",
+    "why_needed": "도구·데이터 연동을 N개 앱 × M개 도구의 조합마다 새로 짜는 대신, 한 번 MCP 서버로 만들면 프로토콜을 지원하는 모든 앱이 재사용할 수 있기 때문이다. 통합 비용을 M×N에서 M+N으로 낮추는 것이 핵심 동기다 [S1].",
+    "outlook": "여러 AI 클라이언트와 도구 제공자가 빠르게 서버를 내놓으며 채택이 확산되는 신호가 있다. 다만 아직 초기 표준이라 인증·권한·보안 모델이 성숙 중이고, 서버 품질 편차와 공급망 신뢰 문제가 과제로 지적된다 [S2].",
+    "quickstart": "가장 빠른 체험: 공식 SDK로 도구 하나를 노출하는 최소 MCP 서버를 띄우고, MCP를 지원하는 클라이언트(예: 데스크톱 앱)에 등록하면 그 도구가 대화 중 호출 가능해진다. 서버는 'tool 목록을 알려주는 부분'과 'tool을 실제 실행하는 부분'만 구현하면 시작된다 [S2]."
+  },
+  "media": {
+    "youtube_global": [],
+    "youtube_kr": []
+  },
+  "reactions": [
+    {
+      "source": "Hacker News",
+      "sentiment": "mixed",
+      "summary": "'표준화 방향은 옳다'는 기대와 '아직 인증·보안이 부족하고 표준이 너무 이르다'는 신중론이 갈림.",
+      "url": "https://news.ycombinator.com/",
+      "collected_at": "2026-07-08T10:05:00Z"
+    }
+  ],
+  "judgment": {
+    "worth_learning": { "level": "high", "note": "에이전트/도구연동을 다룬다면 지금 흐름의 중심." },
+    "maturity": { "level": "medium", "note": "2024년 말 공개된 초기 표준. 스펙·보안 모델이 아직 진화 중." },
+    "relevance": { "level": "medium", "note": "TLL의 수집기·도구연동을 표준화할 때 참고 가치." }
+  },
+  "sources": [
+    {
+      "sid": "S1",
+      "title": "Introducing the Model Context Protocol",
+      "org": "Anthropic (공식 발표)",
+      "date": "2024-11-25",
+      "grade": 1,
+      "url": "https://www.anthropic.com/news/model-context-protocol",
+      "collected_at": "2026-07-08T09:50:00Z"
+    },
+    {
+      "sid": "S2",
+      "title": "Model Context Protocol — 공식 문서/스펙",
+      "org": "modelcontextprotocol.io",
+      "date": "2025-01-15",
+      "grade": 1,
+      "url": "https://modelcontextprotocol.io/",
+      "collected_at": "2026-07-08T09:53:00Z"
+    }
+  ],
+  "unverified": [
+    {
+      "claim": "MCP가 사실상 업계 표준으로 '확정'되었다는 서술",
+      "reason": "채택이 늘고 있으나 경쟁 접근·표준화 논의가 진행 중. '확정'은 근거가 약해 미확인 처리.",
+      "conflicting_sids": []
+    }
+  ]
+}

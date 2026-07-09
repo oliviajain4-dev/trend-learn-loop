@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "id": "rag",
+  "tech_name": "RAG (검색증강생성, Retrieval-Augmented Generation)",
+  "first_seen": "2026-07-08",
+  "status": "sample",
+  "one_liner": "질문에 답하기 전에 외부 지식을 먼저 검색해 LLM 답변의 근거로 대는 기법 — 모델을 재학습하지 않고도 최신·사실 정보를 주입한다 [S1].",
+  "metrics": {
+    "atomic_support_rate": 0.94,
+    "citation_precision": 0.9,
+    "citation_recall": 0.86,
+    "ragas_faithfulness": 0.91,
+    "source_count": 3
+  },
+  "sections": {
+    "skeleton": "RAG는 크게 두 부품으로 이뤄진다: (1) 질문과 관련된 문서를 찾아오는 검색기(retriever), (2) 찾아온 문서를 근거로 답을 쓰는 생성기(generator=LLM). 사용자의 질문이 들어오면 먼저 지식베이스(보통 벡터 DB)에서 관련 passage를 top-k개 검색하고, 그 passage들을 프롬프트에 함께 넣어 LLM이 '읽고' 답하게 한다 [S1][S2].",
+    "background": "원래 대형 언어모델은 학습 시점에 본 지식만 알고 있어서, 학습 이후의 사실이나 사내 문서 같은 비공개 지식은 답하지 못하고 그럴듯하게 지어내는(환각) 문제가 있었다. 2020년 페이스북 AI 연구진의 논문이 검색기와 생성기를 결합해 이 문제를 완화하는 구조를 제시하며 RAG라는 이름이 굳어졌다 [S1].",
+    "contrast_analogy": "파인튜닝(fine-tuning)과 자주 비교된다. 파인튜닝이 '모델의 뇌를 다시 훈련시켜' 지식을 심는 것이라면, RAG는 '시험장에 오픈북을 들고 들어가게' 하는 것에 가깝다 — 모델 가중치는 그대로 두고 필요한 자료를 그때그때 펼쳐 보게 한다. 그래서 지식 갱신이 문서 교체만으로 즉시 되고, 어떤 문서를 근거로 답했는지 추적할 수 있다 [S2][S3].",
+    "why_needed": "환각을 줄이고, 답변에 출처를 붙일 수 있으며, 모델 재학습 없이 최신·사내 지식을 반영할 수 있기 때문이다. 특히 '근거를 댈 수 있다'는 점이 신뢰가 중요한 도메인(법률·의료·기업 내부지식)에서 결정적이다 [S1][S3].",
+    "outlook": "채택 신호는 강하다 — 대부분의 기업용 LLM 애플리케이션이 RAG를 기본 골격으로 쓴다. 다만 한계도 뚜렷하다: 검색이 엉뚱한 문서를 가져오면 답도 틀리고(garbage in, garbage out), 검색된 문맥이 길어질수록 비용·지연이 커진다. 최근에는 검색 품질을 높이는 재순위화(re-ranking), 여러 번 검색하는 agentic RAG 등으로 보완이 진행 중이다 [S2][S3].",
+    "quickstart": "가장 단순한 형태: (1) 문서를 청크로 쪼개 임베딩해 벡터 DB에 저장 → (2) 질문을 같은 임베딩 공간으로 변환해 유사한 청크 top-k 검색 → (3) '다음 문맥을 근거로만 답하라' 프롬프트에 청크를 넣어 LLM 호출. LangChain·LlamaIndex 같은 라이브러리가 이 파이프라인을 몇 줄로 제공한다 [S2]."
+  },
+  "media": {
+    "youtube_global": [],
+    "youtube_kr": []
+  },
+  "reactions": [
+    {
+      "source": "Hacker News",
+      "sentiment": "mixed",
+      "summary": "'이제 거의 표준이 됐다'는 반응과 '단순 top-k 검색만으로는 부족하고 검색 품질이 병목'이라는 회의가 공존.",
+      "url": "https://news.ycombinator.com/",
+      "collected_at": "2026-07-08T09:12:00Z"
+    },
+    {
+      "source": "Reddit r/MachineLearning",
+      "sentiment": "positive",
+      "summary": "사내 문서 Q&A를 파인튜닝 없이 붙일 수 있어 실무 도입이 쉽다는 긍정 후기 다수.",
+      "url": "https://www.reddit.com/r/MachineLearning/",
+      "collected_at": "2026-07-08T09:20:00Z"
+    }
+  ],
+  "judgment": {
+    "worth_learning": { "level": "high", "note": "LLM 애플리케이션의 사실상 기본기. 배워두면 응용 범위가 넓다." },
+    "maturity": { "level": "high", "note": "2020년 이후 충분히 검증됨. 프로덕션 사례 풍부." },
+    "relevance": { "level": "high", "note": "TLL 자체가 검색·근거·출처를 다루므로 직접 관련." }
+  },
+  "sources": [
+    {
+      "sid": "S1",
+      "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+      "org": "Facebook AI Research (NeurIPS 2020)",
+      "date": "2020-05-22",
+      "grade": 1,
+      "url": "https://arxiv.org/abs/2005.11401",
+      "collected_at": "2026-07-08T08:55:00Z"
+    },
+    {
+      "sid": "S2",
+      "title": "Retrieval Augmented Generation (RAG) 개념 문서",
+      "org": "LangChain 공식 문서",
+      "date": "2024-11-01",
+      "grade": 2,
+      "url": "https://python.langchain.com/docs/concepts/rag/",
+      "collected_at": "2026-07-08T08:58:00Z"
+    },
+    {
+      "sid": "S3",
+      "title": "RAG vs Fine-tuning: 언제 무엇을 쓰나",
+      "org": "기술 블로그(2차 자료)",
+      "date": "2024-03-10",
+      "grade": 3,
+      "url": "https://example.com/rag-vs-finetuning",
+      "collected_at": "2026-07-08T09:02:00Z"
+    }
+  ],
+  "unverified": [
+    {
+      "claim": "RAG가 환각을 '완전히' 제거한다는 서술",
+      "reason": "검색이 틀리면 여전히 환각이 발생함. 완화이지 제거가 아님 — 과장된 주장으로 판단해 미확인 처리.",
+      "conflicting_sids": ["S3"]
+    }
+  ]
+}
