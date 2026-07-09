@@ -1,0 +1,18 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 환경변수 (API 키 - Gemini, Claude 등 모든 키)
+.env
+.env.*
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# 결과물
+output/
+*.log
