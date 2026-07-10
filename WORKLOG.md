@@ -56,3 +56,21 @@
 
 ### 다음
 - [5단계]: `streamlit run`으로 실제 실행 → 스크린샷으로 시각 확인.
+
+## 2026-07-10 — [5단계] 실제 실행 & 시각 확인 (Phase 1 대시보드 MVP 완료)
+- `streamlit run src/tll/dashboard/app.py --server.headless true` 로 실제 구동.
+- **로컬 전용 바인딩 실측**: 이전 헤드리스 실행 땐 로그에 External/Network URL(공인 IP)이
+  떴으나, config 적용 후엔 `Uvicorn server started on localhost:8501` / `URL: http://localhost:8501`
+  만 남음 → 외부 노출 없음 확인.
+- **가동 검증**: `/_stcore/health` 200, 메인 200, 로그에 에러/트레이스백 없음.
+- 시각 확인 방식은 사용자 선택으로 **직접 브라우저 확인**(Playwright 미설치, 추가 의존성 0).
+- 실행법(재현):
+  ```
+  .\.venv\Scripts\Activate.ps1
+  streamlit run src/tll/dashboard/app.py   # → http://localhost:8501
+  ```
+
+### Phase 1 대시보드 정리
+- 데이터 계약(schema) → 샘플 3건 → 목록 → 상세 → 실행까지 end-to-end 동작.
+- 다음 큰 흐름(로드맵): 진짜 파이프라인(Collector·Analyst·Verifier·Metrics)이 같은
+  `data/briefs/*.json` 계약에 실데이터를 쌓으면 이 대시보드가 그대로 실측값을 보여줌.
