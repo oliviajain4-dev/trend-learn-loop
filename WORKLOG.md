@@ -382,3 +382,18 @@
   인용문 원문존재·결정론. ruff 통과.
 - 데모(사용자 머신): `python -m tll.factcheck.factcheck` (scout→…→author→factcheck, 충실도% 표시).
 - 다음: **Memory**(개념 KB=대조근거 + 신규성) → Dashboard → Loop.
+
+## 2026-07-10 — [Memory] 기억 — 개념 KB(대조·유추 엔진) + Reflexion lessons (7단계)
+- 하는 일: `src/tll/memory/`.
+  - **개념 KB(의미기억)**: 검증 교과서 → 개념 카드 upsert(같은 주제면 times_seen++·first_seen 보존).
+  - **recall/contrast_context**: 관련 개념 회상(용어 겹침) → Author 대조·유추 근거("기존과 뭐가 다른지"의 재료).
+  - **lessons(에피소드, Reflexion)**: 실패·교훈 기록 → 다음 시도 회피(loop 에서 사용).
+- **'스스로 학습'의 실체**: KB가 쌓일수록 대조가 좋아짐(Co-STORM 마인드맵 취지). '중심으로 올린' 조각.
+- CoALA 매핑: 의미기억=개념 KB, 에피소드=lessons, 절차=프롬프트/프로바이더(코드).
+- 저장 결정론(JSON·정렬·원자적), 전역상태 없음. **정직한 한계**: 회상은 영문 tech 토큰 겹침(어휘)이지
+  임베딩(의미) 아님 — 다른 이름의 유사 기술은 놓칠 수 있음(임베딩은 Phase 4).
+- Author 연결(contrast_context 주입)은 **Loop 단계에서** 배선(지금은 Memory 독립 완성).
+- 검증(오프라인, 순수 데이터): **18체크 PASS** — remember·upsert·recall(겹침·자기제외·무관제외)·
+  contrast_context·lessons(최신·kind)·정렬저장·손상복원. ruff 통과.
+- 데모(사용자 머신): `python -m tll.memory.memory` (전체 체인 → 검증 교과서 기억 → KB·회상 표시).
+- 다음: **Dashboard**(한국어 통합 뷰) → **Loop**(30분 자동).
