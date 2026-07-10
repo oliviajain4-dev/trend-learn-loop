@@ -1,0 +1,108 @@
+{
+  "id": "langchain",
+  "tech_name": "LangChain",
+  "first_seen": "2026-07-10",
+  "status": "verified",
+  "one_liner": "LangChain은 대규모 언어 모델(LLM)을 활용한 애플리케이션 개발을 지원하기 위해 구성 가능성(composability)에 초점을 맞춘 프레임워크입니다 [S3].",
+  "metrics": {
+    "atomic_support_rate": 0.714,
+    "citation_precision": 1.0,
+    "citation_recall": 1.0,
+    "ragas_faithfulness": 1.0,
+    "source_count": 6
+  },
+  "sections": {
+    "skeleton": "LangChain은 LLM 호출, 데이터 소스 연결, 에이전트 구축을 위한 추상화된 구성 요소와 체인 구조를 제공합니다 [S3].",
+    "background": "LLM을 활용한 애플리케이션 구축을 더 쉽게 만들기 위해 설계되었으며, 2023년 4월 벤치마크로부터 1,000만 달러 규모의 시드 투자를 유치했습니다 [S3][S6].",
+    "contrast_analogy": "일부 개발자들은 LangChain의 기능이 복잡한 추상화 없이도 100줄 미만의 코드로 직접 구현 가능하다고 지적합니다 [S5].",
+    "why_needed": "다양한 구성 요소를 조립하여 LLM 기반의 AI 애플리케이션을 신속하게 개발하고 확장하기 위해 필요한 도구를 제공합니다 [S3].",
+    "outlook": "일부 기업은 추상화 복잡성과 유지보수 어려움을 이유로 LangChain 사용을 중단하고 있으며, 추상화 계층이 오히려 개발의 병목이 될 수 있다는 비판적 견해도 존재합니다 [S1][S4].",
+    "quickstart": "다양한 LLM API와 데이터 소스를 연결하는 체인 컴포넌트를 활용하여 워크플로우를 구성하는 방식으로 시작할 수 있습니다 [S3]."
+  },
+  "media": {
+    "youtube_global": [],
+    "youtube_kr": []
+  },
+  "reactions": [],
+  "judgment": {
+    "worth_learning": {
+      "level": "medium",
+      "note": "초기 구축에는 유용할 수 있으나, 복잡한 프로젝트에서는 추상화 계층에 대한 이해와 직접 구현 사이의 트레이드오프를 고려해야 합니다 [S1][S5]."
+    },
+    "maturity": {
+      "level": "medium",
+      "note": "투자를 통해 성장하고 있으나, 코드 복잡성과 추상화에 대한 사용자들의 회의적인 시각이 존재합니다 [S1][S4][S6]."
+    },
+    "relevance": {
+      "level": "medium",
+      "note": "LLM 기반 에이전트 개발 시 표준 도구로 언급되지만, 최근 대안적인 구현 방식이나 직접 구현을 선호하는 움직임도 확인됩니다 [S1][S2][S4]."
+    }
+  },
+  "sources": [
+    {
+      "sid": "S1",
+      "title": "Why we no longer use LangChain for building our AI agents",
+      "org": "octomind.dev",
+      "date": "2024-06-20T15:41:56Z",
+      "grade": 3,
+      "url": "https://www.octomind.dev/blog/why-we-no-longer-use-langchain-for-building-our-ai-agents",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    },
+    {
+      "sid": "S2",
+      "title": "Langchain Is Pointless",
+      "org": "old.reddit.com",
+      "date": "2023-07-08T15:56:19Z",
+      "grade": 3,
+      "url": "https://old.reddit.com/r/LangChain/comments/13fcw36/langchain_is_pointless/",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    },
+    {
+      "sid": "S3",
+      "title": "LangChain: Build AI apps with LLMs through composability",
+      "org": "github.com",
+      "date": "2023-01-18T02:16:13Z",
+      "grade": 2,
+      "url": "https://github.com/hwchase17/langchain",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    },
+    {
+      "sid": "S4",
+      "title": "The Problem with LangChain",
+      "org": "minimaxir.com",
+      "date": "2023-07-14T16:11:09Z",
+      "grade": 3,
+      "url": "https://minimaxir.com/2023/07/langchain-problem/",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    },
+    {
+      "sid": "S5",
+      "title": "Re-implementing LangChain in 100 lines of code",
+      "org": "blog.scottlogic.com",
+      "date": "2023-05-04T19:33:12Z",
+      "grade": 3,
+      "url": "https://blog.scottlogic.com/2023/05/04/langchain-mini.html",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    },
+    {
+      "sid": "S6",
+      "title": "LangChain Announces 10M Seed Round",
+      "org": "blog.langchain.dev",
+      "date": "2023-04-04T16:48:00Z",
+      "grade": 3,
+      "url": "https://blog.langchain.dev/announcing-our-10m-seed-round-led-by-benchmark/",
+      "collected_at": "2026-07-10T07:56:32+00:00"
+    }
+  ],
+  "unverified": [
+    {
+      "claim": "LangChain이 향후 AI 에이전트 개발의 표준이 될 것이다.",
+      "reason": "현재 LangChain 사용을 중단하는 사례와 비판적인 의견이 공존하고 있어 미래의 표준 여부는 단정할 수 없습니다 [S1][S2][S4].",
+      "conflicting_sids": [
+        "S1",
+        "S4"
+      ]
+    }
+  ],
+  "schema_version": "1.0"
+}
