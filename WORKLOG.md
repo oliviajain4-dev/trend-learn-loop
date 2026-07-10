@@ -130,3 +130,20 @@
   Meta RAG 논문·Ask HN 로컬 RAG…), **Rage 오탐 0**, url·created_at(발행일)·points 원본 채워짐.
   grade 는 도메인 휴리스틱(github.com=2, 개인블로그=3). ruff 통과.
 - **다음**: (3단계) GeekNewsProvider — news.hada.io RSS 실호출.
+
+---
+
+## 2026-07-10 — [Collector 3단계] GeekNewsProvider (news.hada.io, 실데이터)
+- **막힘→뚫음 (또 추측 금지의 실증)**: "RSS"라고 했지만 실제로 열어보니 **Atom 형식**
+  (<feed>/<entry>, <link href=...> 속성, <published>). RSS 2.0(<item>/<pubDate>/<link>텍스트)
+  로 짰으면 전부 빗나갔을 것. → stdlib `xml.etree` 로 Atom 파싱(feedparser 등 새 의존성 불필요).
+- **robots 확인**: news.hada.io/robots.txt 의 `User-agent: *` 는 `/rss/` 미포함(Allow). 우리
+  RobotsGuard 도 allowed=True. RSS 는 API 예외가 아니라 robots_guard 를 실제로 적용.
+  (`Content-Signal: ai-train=no` 있으나 우리는 학습이 아니라 링크·제목·날짜를 provenance 로
+   기록하는 수집이고, 이 피드는 봇 구독용으로 공개됨.)
+- 공통 관련성 필터를 `base.topic_matches()` 로 추출(HN 필터와 동일 규칙 공유).
+- 성격 차이 명시: HN 은 검색, GeekNews 는 **최근 피드** → topic 이 최근에 없으면 0건이 정상.
+- **검증(실호출 원문)**: 피드 50개 파싱. `search("RAG")`=0건(최근 피드에 없음, 정직).
+  실재 단어 `search("미첼")`=1건 → 실제 url(topic?id=31294)·published(2026-07-10) 원본 채워짐.
+  grade=2 고정(국내 IT 기관). ruff 통과.
+- **다음**: (4단계) engine.collect() — 두 provider 를 돌려 중복제거·다양성·summary, RAG end-to-end.

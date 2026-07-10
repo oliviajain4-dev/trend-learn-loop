@@ -4,7 +4,6 @@
 engine.collect() 가 자동으로 사용한다.
 
 자리표시(다음에 붙일 것):
-  - GeekNewsProvider (news.hada.io RSS) — 3단계에서 추가
   - ArxivProvider (arXiv API) — 로드맵
   - OfficialDocsProvider (tech→공식문서 URL 레지스트리) — 로드맵
 """
@@ -12,12 +11,14 @@ engine.collect() 가 자동으로 사용한다.
 from __future__ import annotations
 
 from tll.collector.providers.base import BaseProvider
+from tll.collector.providers.geeknews import GeekNewsProvider
 from tll.collector.providers.hackernews import HackerNewsProvider
 
 _PROVIDERS: dict[str, BaseProvider] = {
     p.name: p
     for p in (
         HackerNewsProvider(),
+        GeekNewsProvider(),
     )
 }
 
