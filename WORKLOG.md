@@ -353,3 +353,17 @@
 - 실제 LLM은 사용자 머신: `python -m tll.reader.reader` (scout→triage→track→read 데모).
 - **'가져오기' 절반 완료**: Scout(찾기)→Triage(고르기)→Tracker(본문)→Reader(독해·판단).
   다음부터 '집필' 절반: **Author**(한국어 교과서·대조유추).
+
+## 2026-07-10 — [Author] 집필 — 한국어 교과서 (에이전트 순서 5단계, '집필' 절반 시작)
+- 하는 일: Reader가 '충분' 판정한 본문으로 **한국어 교과서(정체 브리핑)** 집필. `src/tll/author/`.
+  §3 6섹션(뼈대·배경·**대조유추**·필요성·전망·quickstart) + one_liner + judgment + unverified. 문장별 [S1].
+- **원문 보존**: Source.body_text 에 원문을 담아 넘김 → **Fact-Check(L1)가 실제 문자열 대조** 가능
+  (그 "반쪽" 구멍이 여기서 데이터로 준비됨).
+- 대조·유추: 원문 근거는 [S1], 원문 밖 일반지식 비교는 (일반지식) 표시 → 이후 미확인(정직).
+- 재사용/적응: `analyst/writer.py` 패턴(프롬프트·JSON 파싱·정규화)을 단일 출처(TrackedDoc)용으로.
+- 견고화: 빈 본문·malformed JSON → AuthorError. author_all 은 한 건 실패가 전체를 안 죽임(개별 격리).
+  섹션 누락→"미확인" 채움, judgment level 정규화, unverified conflicting_sids 실존 sid만.
+- 검증(오프라인, 목 LLM): **18체크 PASS** — 조립·6섹션·대조·원문보존·[S1]·정규화·conflicting 필터·
+  섹션누락·빈본문·malformed·펜스·author_all 격리·결정론. ruff 통과.
+- 실제 LLM은 사용자 머신: `python -m tll.author.author` (scout→…→author, 실제 한국어 교과서 생성).
+- 다음: **Fact-Check** — 교과서 [S1] 인용을 원문(body_text)과 문자열 대조(L1) + 번역 대조.
