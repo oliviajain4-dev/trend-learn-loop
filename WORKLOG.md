@@ -113,3 +113,20 @@
   5) RobotsGuard 라이브: news.hada.io / news.ycombinator.com allowed=True
   → ruff 통과 + [ALL PASS].
 - **다음**: (2단계) HackerNewsProvider — HN Algolia 검색 API 실호출로 진짜 title/url 확인.
+
+---
+
+## 2026-07-10 — [Collector 2단계] HackerNewsProvider (Algolia 검색, 실데이터)
+- provider 레지스트리 구조: `providers/base.py`(BaseProvider) + `providers/__init__.py`
+  (get_provider/all_providers/provider_names) + `providers/hackernews.py`.
+- **막힘→뚫음 (추측 금지의 실증)**: 코드 짜기 전에 Algolia 응답을 먼저 실호출로 열어봄.
+  → `query=RAG` 가 **"GameStop Is Rage Against the Financial Machine"** 를 물어옴.
+  Algolia 오타허용(fuzzy) 검색이 "RAG"↔"Rage" 를 매칭한 것. 추측했으면 쓰레기 데이터를
+  그대로 넣을 뻔. **해결**: 클라이언트에 결정론 관련성 필터(`\btoken\b` 단어경계, 다어절 AND)
+  → "RAG" 는 "Rage" 를 거부. (변형/복수형 일부는 놓치지만 fuzzy 오탐보다 낫다는 판단.)
+- provider 규칙 준수: robots 는 HN API 라 예외, rate limit 만. 실패해도 빈 리스트(전체 안 죽음).
+  points/num_comments 는 API 원본 수치를 '반응 신호'로 text 에 기록(지어내지 않음).
+- **검증(실호출 원문 남김)**: topic="RAG" → 6건 전부 진짜 RAG 관련(Production RAG·FastGraphRAG·
+  Meta RAG 논문·Ask HN 로컬 RAG…), **Rage 오탐 0**, url·created_at(발행일)·points 원본 채워짐.
+  grade 는 도메인 휴리스틱(github.com=2, 개인블로그=3). ruff 통과.
+- **다음**: (3단계) GeekNewsProvider — news.hada.io RSS 실호출.
