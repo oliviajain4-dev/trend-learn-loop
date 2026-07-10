@@ -216,6 +216,17 @@
   → Analyst/Verifier 가 `get_provider()` 로 벤더 무관하게 LLM 사용 가능.
 - 다음: piece 4 Analyst — 수집물(CollectedDoc)로 문장별 [S#] 브리핑 초안 집필.
 
+## 2026-07-10 — [piece 4] Analyst 집필기 (수집→[S#] 초안)
+- `analyst/writer.py: write_brief(topic, collection) -> Brief(status="draft")`.
+- 설계: **sid(S1..Sn)는 코드가 결정론적으로 부여**(LLM 아님). LLM 은 그 출처만 근거로
+  §3 섹션·판단을 **JSON 으로** 집필, 각 사실 문장에 [S#]. URL·수치 생성 금지(프롬프트+DNA).
+- 견고화: ```json 펜스 제거·JSON 추출, 섹션 빈칸→"미확인", judgment level 정규화(→medium),
+  unverified 의 conflicting_sids 를 실존 sid 로 필터. 마지막에 parse_brief(strict) 로 계약 자동보증.
+- 지표는 0(미측정) + status="draft" → 대시보드가 "초안(미검증)" 배지로 정직 표기, Metrics 단계가 채움.
+- **검증(실 LLM 호출)**: collect("RAG",hackernews,5) → write_brief → 계약 통과 draft.
+  본문 [S#] 인용 실재(S1/S2/S3/S5), **인용 sid ⊆ 유효 sid(유령 인용 0)**, judgment 정상. ruff 통과.
+- 다음: piece 5 Verifier — CoVe + L1 인용 앵커링(결정론) + L4 NLI 인용검사.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
