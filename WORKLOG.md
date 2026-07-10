@@ -274,3 +274,40 @@
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
   collect(topic, source) 액션으로 그대로 호출 가능. summary 가 재수집 판단(전환점 1)의 관찰이 된다.
 - 실측 함정 2개를 '추측 금지·실응답 먼저'로 코딩 전에 차단: HN fuzzy(RAG↔Rage), GeekNews RSS→실제 Atom.
+
+---
+
+## 2026-07-10 — [v3 전환] 자율 에이전트 재설계 + Scout(정찰) 1조각
+
+### 방향 전환 (기획서 v3)
+- 사용자 재확정: 주제를 사람이 넣는 게 아니라 **에이전트가 스스로 최신 기술을 발견**해 실시간으로
+  한국어 교과서를 만든다. 충실도는 북극성에서 **배경(최신성을 가능케 하는 안전벨트)**으로 재배치.
+- `docs/TLL_기획서_v3.md` 신설: 에이전트 작동 순서(Scout→Triage→Tracker→Reader→Author→
+  Fact-Check→Memory→Dashboard)를 척추로, 빌드도 그 순서. 기억(KB)을 Phase3→**중심**으로 승격.
+- 근거: STORM/Co-STORM(조사→집필·계속 갱신되는 마인드맵), deep research agent(브리핑+기억 루프),
+  CoALA/ReAct/Reflexion/Anthropic.
+
+### Scout(정찰) — `src/tll/scout/` (에이전트 순서 1단계)
+- 하는 일: 실시간 소스(HN 프론트페이지 + GeekNews 최근 피드) 폴링 → TrendCandidate 정규화
+  (등급·신선도·안정 id) → 최소 Memory(seen 로그)로 '지난 확인 이후 **새 것만**'.
+- **경계 라벨 정직화(중요, ERRORS #5)**: v3 초안은 Scout를 [에이전트]로 적었으나, '훑어서 새 것만'은
+  실제론 **결정론(폴링+집합차)**이다. 가치 판단('교과서 감이냐')은 다음 단계 **Triage(에이전트)**로 분리.
+- 재사용: `trends.fetch_top_stories`(HN 실시간), `compute_content_hash`(안정 id),
+  `grade_from_domain`(등급), `GeekNewsProvider.search("")`(빈 topic=토큰0=최근 피드 전체).
+- 신선도: `freshness.age_label` — 발행시각→"3시간 전"(한국어). now 주입식(테스트 가능).
+- 최소 Memory: `seen_store.SeenStore`(`data/memory/seen.json`). first_seen 박제, 원자적 저장,
+  키 정렬 출력 = 결정론. 이후 개념 KB로 확장(v3 §7).
+
+### 막힘→뚫음
+- **(샌드박스 네트워크)** allowlist 상 PyPI만 열리고 HN/GeekNews/GitHub는 프록시 403 →
+  **실호출은 사용자 머신**(`python -m tll.scout.scout`), 결정론 로직은 목(mock) 피드로 오프라인 완전 검증.
+- **(테스트 몽키패치)** `tll.scout` 의 `scout` 함수가 동명 서브모듈을 가려 `sys.modules["tll.scout.scout"]`로 패치.
+- **(샌드박스 git/삭제 잠금)** 이 마운트는 파일 생성·수정은 되나 **삭제(unlink)를 EPERM 으로 막음** →
+  `.git/index.lock` 을 못 지워 **커밋은 사용자 머신에서**. 파일 도구의 기존파일 수정(임시→교체)도 실패해
+  WORKLOG/ERRORS 는 bash append 로 기입.
+
+### 검증 (오프라인, 결정론) — 25개 체크 전부 PASS
+- age_label/unix_to_iso, HN 정규화(arxiv=1급·blog=3급·순위·cid), 신규성(run1 new=2→run2 0→run3 +1=1),
+  first_seen 박제, seen.json 키정렬, 소스 실패 격리(HN 403이어도 GeekNews 생존), 결정론(복제 store→같은 new).
+- ruff 0.15.21 → All checks passed.
+- 남은 것(정직): 실제 폴링·git 커밋은 사용자 머신. 다음 조각 = **Triage(에이전트 판단)**.

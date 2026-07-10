@@ -1,0 +1,2 @@
+# Memory 디렉터리. seen.json(최소 Memory)·이후 개념 KB 가 여기 쌓인다.
+# 런타임 상태 파일(*.json)은 .gitignore 로 제외(이 .gitkeep 만 추적).

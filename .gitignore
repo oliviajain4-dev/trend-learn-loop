@@ -20,6 +20,9 @@ output/
 # 수집 원자료(디버그용, 휘발성 — 최종 브리핑 data/briefs 와 다름)
 data/collected/
 
+# Memory 런타임 상태(seen 로그 등, 휘발성) — .gitkeep 만 추적
+data/memory/*.json
+
 # 파이썬 패키징/도구 캐시
 *.egg-info/
 .ruff_cache/
