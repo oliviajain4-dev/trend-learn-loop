@@ -409,3 +409,19 @@
   최신순·유효HTML·escape·빈목록·store 왕복. ruff 통과. + 샘플 미리보기 HTML 생성.
 - 데모(사용자 머신): `python -m tll.present.html` (전체 체인 → 저장 → data/dashboard.html, 브라우저로 열기).
 - 다음(마지막): **Loop** — 전부를 30분마다 자동으로 감싸는 ReAct 스케줄러.
+
+## 2026-07-10 — [Loop] ReAct 루프 + 30분 스케줄러 — 에이전트 완성 (9단계, 마지막)
+- 하는 일: `src/tll/loop/`. run_cycle = 한 사이클(관찰→판단→행동):
+  Scout→Triage→(후보별)Track→Read→[충분:proceed→Author(+Memory 대조)→Fact-Check→Memory 기억→저장
+  / 부족:collect_more "더 찾자"→lesson→다음]→Dashboard.
+- **ReAct**: Reader의 per-후보 결정(proceed/collect_more)이 실제 제어 흐름을 가름.
+  "더 찾자"=다음 후보로(bounded 재수집) + Reflexion lesson 기록.
+- **안전장치**: target(발행 예산)·max_attempts(시도 상한=비용캡)·무진전 가드(발행0 표기).
+  run_forever(30분, only_new=True) = 자율 스케줄러.
+- **Memory 배선 완료**: 집필 시 contrast_context 주입 → 대조·유추가 KB를 실제로 씀(자기학습 폐루프).
+- **막힘→뚫음**: 파일도구 Edit가 author.py 를 손상(마운트 동기화 레이스)했는데 stale .pyc 가 통과로 위장(ERRORS #6)
+  → PYTHONPYCACHEPREFIX 캐시 우회로 실체 발견 → bash 전체 재작성으로 복구.
+- 검증(오프라인, 스마트 목 LLM+목 fetcher): **13체크 PASS** — 발행/더찾자 분기·시도상한·target·KB기억·
+  저장·대시보드·lessons·decisions·무진전 가드·결정론. **ruff(전체 src/tll) 통과·9조각 임포트 OK**.
+- 데모(사용자 머신): `python -m tll.loop.loop`(1사이클) · `python -m tll.loop.loop --watch`(30분 자동).
+- **★ 에이전트 9조각 전부 완성**: Scout·Triage·Tracker·Reader·Author·Fact-Check·Memory·Dashboard·Loop.

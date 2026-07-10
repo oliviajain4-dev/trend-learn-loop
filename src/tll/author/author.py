@@ -4,7 +4,7 @@
 - **대조·유추** 강조(기존/유사 기술과 뭐가 같고 다른가). 원문 밖 비교는 (일반지식) 표시 → 이후 미확인.
 - 원문(body_text)을 Source 에 보존 → Fact-Check(결정론 L1)가 그 문자열로 실제 대조.
 결과의 사실성은 여기서 보장하지 않는다(status="draft"). 진위는 Fact-Check가 판정.
-테스트/재현: llm_call 주입 → 오프라인 검증.
+Memory 회상(contrast_hint)을 받으면 대조·유추 근거로 프롬프트에 주입한다.
 """
 
 from __future__ import annotations
@@ -37,9 +37,15 @@ _SYSTEM = (
 )
 
 
-def _build_prompt(topic: str, src: Source) -> str:
+def _build_prompt(topic: str, src: Source, contrast_hint: str = "") -> str:
+    hint = (
+        f"참고(이미 아는 관련 개념 — 대조·유추에 활용, 원문 밖 비교는 (일반지식) 표시): {contrast_hint}\n\n"
+        if contrast_hint
+        else ""
+    )
     return (
         f"기술 주제: {topic}\n\n"
+        f"{hint}"
         f"[S1] {src.title} ({src.nature}, {src.grade}급) — {src.url}\n"
         f'원문 본문:\n"""\n{src.body_text}\n"""\n\n'
         "위 원문만 근거로 한국어 교과서를 아래 JSON 으로 써라. 모든 사실 문장 끝에 [S1] 을 달 것:\n"
@@ -126,6 +132,7 @@ def write_textbook(
     model: str | None = None,
     max_tokens: int = 4096,
     body_chars: int = 6000,
+    contrast_hint: str = "",
     llm_call: Callable[[str, str], str] | None = None,
 ) -> Textbook:
     """충분 판정된 TrackedDoc 로 status="draft" 한국어 교과서를 집필."""
@@ -139,13 +146,13 @@ def write_textbook(
         url=doc.url,
         grade=doc.grade,
         nature=doc.nature,
-        body_text=body[:body_chars],  # 원문 보존
+        body_text=body[:body_chars],
         published_at=doc.published_at,
         collected_at=doc.collected_at,
     )
 
     call = llm_call or _make_default_call(provider, model, max_tokens)
-    raw = call(_build_prompt(doc.topic_title, src), _SYSTEM)
+    raw = call(_build_prompt(doc.topic_title, src, contrast_hint), _SYSTEM)
     if not raw.strip():
         raise AuthorError("LLM 이 빈 응답을 반환")
     parsed = _extract_json_object(raw)
@@ -180,7 +187,7 @@ def author_all(docs: list[TrackedDoc], **kw) -> tuple[list[Textbook], list[dict]
     return books, errors
 
 
-def _run_cli() -> None:  # 사용자 머신 데모: python -m tll.author.author
+def _run_cli() -> None:
     from tll.reader.reader import read
     from tll.scout.scout import scout
     from tll.tracker.tracker import track
@@ -193,11 +200,11 @@ def _run_cli() -> None:  # 사용자 머신 데모: python -m tll.author.author
         return
     tk = track(tr.selected)
     rd = read(tk.docs)
-    print(f"[Scout→Triage→Track→Read] 충분 {rd.summary['sufficient']}건 → 집필\n")
+    print(f"[Scout to Read] 충분 {rd.summary['sufficient']}건 → 집필\n")
     if not rd.ready:
         print("집필할 충분한 본문이 없음(전부 '더 찾자'). 잠시 후 다시.")
         return
-    books, errors = author_all(rd.ready[:2])  # 데모: 최대 2건
+    books, errors = author_all(rd.ready[:2])
     for tb in books:
         print("=" * 64)
         print(f"# {tb.topic} — 정체 브리핑  ({tb.age_label}) · status={tb.status}")
