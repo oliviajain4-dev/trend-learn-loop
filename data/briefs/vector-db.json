@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "id": "vector-db",
+  "tech_name": "벡터 데이터베이스 (Vector Database)",
+  "first_seen": "2026-07-08",
+  "status": "sample",
+  "one_liner": "텍스트·이미지 등을 숫자 벡터(임베딩)로 바꿔 저장하고, '의미가 비슷한 것'을 빠르게 찾아주는 데이터베이스 [S1].",
+  "metrics": {
+    "atomic_support_rate": 0.88,
+    "citation_precision": 0.85,
+    "citation_recall": 0.8,
+    "ragas_faithfulness": 0.87,
+    "source_count": 3
+  },
+  "sections": {
+    "skeleton": "핵심은 두 가지다: (1) 데이터를 임베딩 모델로 고차원 벡터로 변환해 저장하고, (2) 질의 벡터와 '가까운' 벡터를 근사 최근접 이웃 탐색(ANN)으로 빠르게 찾는다. 정확도와 속도를 맞바꾸는 HNSW·IVF 같은 인덱스가 이 검색을 수천만 벡터 규모에서도 실용적으로 만든다 [S1][S2].",
+    "background": "전통 DB는 '정확히 일치'하는 값을 잘 찾지만 '의미가 비슷한 것'은 못 찾는다. 임베딩 기반 검색 수요(특히 RAG)가 커지면서, 벡터 저장·유사도 검색·인덱싱을 전문화한 저장소가 하나의 제품군으로 자리 잡았다 [S2].",
+    "contrast_analogy": "전통적인 관계형 DB의 인덱스가 '사전에서 정확한 단어를 찾는 색인'이라면, 벡터 DB의 인덱스는 '뜻이 비슷한 단어들이 근처에 모여 있는 지도'에 가깝다. 그래서 '강아지'로 검색해도 '반려견'이 걸린다. 다만 이 '가까움'은 근사치라, 전통 인덱스의 정확 매칭과 달리 약간의 오차를 감수한다 [S1][S3].",
+    "why_needed": "RAG·추천·중복 탐지·이미지 검색처럼 '의미적 유사성'이 핵심인 작업에서, 대규모 벡터를 밀리초 단위로 검색해야 하기 때문이다. 전통 DB로는 이 유사도 검색을 대규모로 빠르게 하기 어렵다 [S1][S2].",
+    "outlook": "RAG 붐과 함께 채택이 급증했다. 다만 'RAG엔 전용 벡터 DB가 반드시 필요한가'에는 이견이 있다 — PostgreSQL 확장(pgvector)처럼 기존 DB에 벡터 기능을 얹는 흐름도 강해, 전용 제품군과 범용 DB 확장이 경쟁·공존하는 국면이다 [S2][S3].",
+    "quickstart": "체험 순서: (1) 임베딩 모델로 문장 몇 개를 벡터로 변환 → (2) 벡터 DB(또는 pgvector)에 저장 → (3) 새 문장을 같은 모델로 벡터화해 유사도 top-k 질의. 결과가 '키워드 일치'가 아니라 '의미 유사'로 나오는지 확인하면 개념이 잡힌다 [S2]."
+  },
+  "media": {
+    "youtube_global": [],
+    "youtube_kr": []
+  },
+  "reactions": [
+    {
+      "source": "Hacker News",
+      "sentiment": "mixed",
+      "summary": "'전용 벡터 DB는 과잉, pgvector로 충분'이라는 실용파와 '대규모에선 전용 엔진이 유리'라는 반론이 반복됨.",
+      "url": "https://news.ycombinator.com/",
+      "collected_at": "2026-07-08T11:02:00Z"
+    },
+    {
+      "source": "Reddit r/dataengineering",
+      "sentiment": "neutral",
+      "summary": "인덱스 종류(HNSW vs IVF)와 정확도·메모리 트레이드오프에 대한 실무 질문이 많음.",
+      "url": "https://www.reddit.com/r/dataengineering/",
+      "collected_at": "2026-07-08T11:08:00Z"
+    }
+  ],
+  "judgment": {
+    "worth_learning": { "level": "high", "note": "RAG를 제대로 하려면 반드시 이해해야 하는 짝 개념." },
+    "maturity": { "level": "high", "note": "인덱스 알고리즘(HNSW 등)은 성숙. 제품 선택지도 풍부." },
+    "relevance": { "level": "medium", "note": "TLL의 KB·검색 설계 시 직접 쓰일 후보 기술." }
+  },
+  "sources": [
+    {
+      "sid": "S1",
+      "title": "Efficient and robust approximate nearest neighbor search using HNSW graphs",
+      "org": "Malkov & Yashunin (IEEE TPAMI)",
+      "date": "2018-08-01",
+      "grade": 1,
+      "url": "https://arxiv.org/abs/1603.09320",
+      "collected_at": "2026-07-08T10:40:00Z"
+    },
+    {
+      "sid": "S2",
+      "title": "pgvector — Open-source vector similarity search for Postgres",
+      "org": "pgvector 프로젝트 (GitHub)",
+      "date": "2024-09-01",
+      "grade": 2,
+      "url": "https://github.com/pgvector/pgvector",
+      "collected_at": "2026-07-08T10:44:00Z"
+    },
+    {
+      "sid": "S3",
+      "title": "벡터 DB가 정말 필요한가 — 선택 가이드",
+      "org": "기술 블로그(2차 자료)",
+      "date": "2024-06-20",
+      "grade": 3,
+      "url": "https://example.com/do-you-need-a-vector-db",
+      "collected_at": "2026-07-08T10:48:00Z"
+    }
+  ],
+  "unverified": [
+    {
+      "claim": "RAG에는 반드시 전용 벡터 데이터베이스가 필요하다는 주장",
+      "reason": "pgvector 등 기존 DB 확장으로도 상당수 사례를 처리함. 출처 간 견해가 갈려 미확인 처리.",
+      "conflicting_sids": ["S2", "S3"]
+    }
+  ]
+}

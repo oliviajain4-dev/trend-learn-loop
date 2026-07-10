@@ -1,0 +1,9 @@
+# TLL 대시보드 로컬 설정
+# 요구사항: 내 PC 전용 로컬. 외부/네트워크 인터페이스에 노출하지 않는다.
+
+[server]
+address = "localhost"   # 127.0.0.1 로만 바인딩 (External URL 노출 방지)
+port = 8501
+
+[browser]
+gatherUsageStats = false   # 사용통계 전송 끔

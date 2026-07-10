@@ -16,3 +16,14 @@ __pycache__/
 # 결과물
 output/
 *.log
+
+# 수집 원자료(디버그용, 휘발성 — 최종 브리핑 data/briefs 와 다름)
+data/collected/
+
+# 파이썬 패키징/도구 캐시
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+
+# Streamlit (로컬 시크릿은 절대 커밋 금지)
+.streamlit/secrets.toml

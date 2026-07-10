@@ -1,0 +1,14 @@
+# TLL — Phase 1 (대시보드) 의존성
+# 원칙: 무거운 프레임워크 금지. 로컬 대시보드에 필요한 최소만.
+
+streamlit>=1.36,<2.0      # 로컬 대시보드 (http://localhost:8501)
+plotly>=5.22,<6.0         # 충실도 게이지 등 차트 (Streamlit 기본으로 부족할 때만)
+python-dotenv>=1.0,<2.0   # .env 로더 (API 키는 코드 하드코딩 금지, 여기로만)
+requests>=2.31,<3.0       # 수집기(Collector): Hacker News 등 무키 API 호출
+
+# --- LLM (shared/llm 추상화) ---
+google-genai>=1.0,<2.0    # Gemini (요약·집필 주력) 공식 SDK
+anthropic>=0.40           # Claude (교차모델 검증용) 공식 SDK
+
+# --- 개발 도구 ---
+ruff>=0.5,<1.0            # 린트/포매터
