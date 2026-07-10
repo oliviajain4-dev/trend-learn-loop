@@ -239,6 +239,16 @@
 - 이 검출 메커니즘이 piece 6 Eval-Harness 의 '환각 검출률' 측정 대상이 된다.
 - 다음: piece 6 Metrics+Eval-Harness — 골드셋·환각주입으로 Verifier 검출률 실측.
 
+## 2026-07-10 — [piece 6-1] Metrics: 결정론 충실도 지표
+- `metrics/compute.py`: compute_metrics(브리핑→지표), apply_metrics(반영 + 통과시 status="verified").
+- **정직 고지**: 진짜 FActScore/RAGAS/ALCE-NLI 는 본문 원문 필요 → 지금은 **결정론 프록시**:
+  atomic_support_rate=신뢰(1-2급)출처 인용비율, citation_precision=유효율(1-유령율),
+  citation_recall=커버리지, ragas=커버리지 프록시. '인용 구조 건전성'을 잰다(과장 금지).
+- **막힘→뚫음**(ERRORS #4): 정밀도에도 사실문 길이필터(≥20자)를 재사용해 **짧은 유령인용을 놓침**.
+  → 정밀도는 '인용 달린 모든 문장' 기준으로 분리. 주입 후 precision 0.875 로 정확 하락.
+- **검증**: rag.json → precision1.0/coverage0.467, status verified. 유령인용 주입 → precision 0.875, status draft. ruff 통과.
+- 다음: (6-2) Eval-Harness — 환각 주입 → Verifier 검출률(recall)·오탐 실측.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
