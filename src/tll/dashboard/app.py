@@ -52,7 +52,7 @@ def main() -> None:
     with st.sidebar:
         st.markdown("### 🧭 TLL")
         st.caption("Trend · Learn · Loop")
-        if st.button("🔄 데이터 새로고침", use_container_width=True):
+        if st.button("🔄 데이터 새로고침", width="stretch"):
             _load_briefs.clear()
             st.rerun()
 

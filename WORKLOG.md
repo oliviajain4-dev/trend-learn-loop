@@ -35,3 +35,24 @@
 
 ### 다음
 - (2)단계: 샘플 브리핑 JSON 2~3건(RAG, MCP 등) 작성 → 계약대로 검증 통과시키기.
+
+---
+
+## 2026-07-10 — [2단계] 샘플 브리핑 3건 (커밋 40c9768)
+- RAG·MCP·벡터DB 3건을 `data/briefs/`에 작성. 전부 `status="sample"`.
+- 결정: 미디어는 빈 배열(링크·조회수는 나중에 YouTube API 실데이터만), 2차자료 URL은 `example.com`으로 자리표시+등급3. metrics는 일부러 편차(RAG 94%/MCP 81%)를 줘 게이지 표현 확인용.
+- 각 건에 `unverified`(미확인) 1건씩 심음(정직 원칙 데모).
+- **검증**: 눈으로만 보지 않고 1단계 검증기 `load_all_briefs`에 통과시킴 → source_count=실제 출처수 일치 등 계약 만족.
+
+## 2026-07-10 — [3단계] 목록 화면 + 진입점 (커밋 c5d97df)
+- `render.py`(카드 그리드·상태 배지·충실도 색상 공용 헬퍼) + `app.py`(로드·라우팅) + `.streamlit/config.toml`.
+- **막힘→뚫음**: 헤드리스 부팅 로그에서 Streamlit이 External URL(공인 IP)까지 바인딩하는 걸 발견 → "내 PC 전용 로컬" 요구에 맞춰 config로 `address="localhost"` 고정.
+- **검증**: ruff(미사용 import 1건 잡아 수정) → 헤드리스 부팅 `/_stcore/health` HTTP 200.
+
+## 2026-07-10 — [4단계] 상세 화면 (커밋 대기)
+- `render_detail` 본체 구현: 측정지표 4게이지(plotly) + 샘플 경고배너 + §3 0~9 섹션 + 출처표(st.dataframe LinkColumn) + ⚠️미확인.
+- **막힘→뚫음**: "임포트 OK"만으론 렌더 런타임 오류를 못 잡음 → **Streamlit AppTest**로 목록+상세 3건을 브라우저 없이 실제 렌더해 예외 0 확인. 그 과정에서 `use_container_width` 지원종료 경고 발견 → `width="stretch"`로 전량 교체(ERRORS #2).
+- **검증**: ruff 통과 + AppTest 4화면(목록+상세3) 예외 없음 + 핵심 섹션 존재 단언 통과.
+
+### 다음
+- [5단계]: `streamlit run`으로 실제 실행 → 스크린샷으로 시각 확인.
