@@ -367,3 +367,18 @@
   섹션누락·빈본문·malformed·펜스·author_all 격리·결정론. ruff 통과.
 - 실제 LLM은 사용자 머신: `python -m tll.author.author` (scout→…→author, 실제 한국어 교과서 생성).
 - 다음: **Fact-Check** — 교과서 [S1] 인용을 원문(body_text)과 문자열 대조(L1) + 번역 대조.
+
+## 2026-07-10 — [Fact-Check] 검증 — 원문 대조 L1 + 수치 앵커링 (6단계, '반쪽' 구멍 메움)
+- 하는 일: Author 교과서를 **원문(body_text)과 대조**하는 결정론 검증(LLM=0). `src/tll/factcheck/`.
+  - phantom_citation(실존X 인용)·quote_mismatch(따옴표 인용이 원문에 없음) = 위반 → 제거.
+  - unsupported_number(원문에 없는 숫자)·uncited(미인용 사실문)·general_knowledge((일반지식)) = 미확인 플래그.
+  - **충실도%(원문근거)** = ok 사실문 / 전체 사실문. apply 로 위반 제거·비-ok 전부 unverified 이동, status 설정.
+- **"반쪽" 구멍 메움**: Phase 1 anchoring 은 원문 text 필드가 없어 title 을 근사로 썼다(프록시).
+  이제 Tracker→Author 가 body_text 를 보존 → **진짜 본문 문자열 대조**. 프록시였던 충실도가 **실측으로 승격**.
+- 결정론(LLM=0): 같은 입력 → 같은 판정(재현성). 검증기 자신은 환각 안 함(닻).
+- **정직한 한계**: '인용·수치·따옴표'의 원문 앵커링이지 완전한 의미 함의(NLI)는 아니다.
+  인용·숫자가 맞아도 의미가 미묘히 틀릴 수 있음(그건 LLM 판정 영역 → 코어에서 제외). 과장 금지.
+- 검증(오프라인, LLM 0): **18체크 PASS** — 6판정 분류·충실도 3/8·apply(제거·미확인5)·clean=verified 100%·
+  인용문 원문존재·결정론. ruff 통과.
+- 데모(사용자 머신): `python -m tll.factcheck.factcheck` (scout→…→author→factcheck, 충실도% 표시).
+- 다음: **Memory**(개념 KB=대조근거 + 신규성) → Dashboard → Loop.
