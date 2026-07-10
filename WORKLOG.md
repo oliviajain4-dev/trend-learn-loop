@@ -185,6 +185,15 @@
 - 검증: ruff + base/config 임포트·동작(키 존재·없는키 ConfigError) 통과.
 - 다음: (3-2) GeminiProvider 를 실제 1회 호출로 검증.
 
+## 2026-07-10 — [shared/llm 3-2] GeminiProvider (실호출 그린패스)
+- google-genai 확정 API: `client.models.generate_content(model, contents, config=GenerateContentConfig(...))`,
+  응답 `r.text` / `r.usage_metadata`. Gemini 은 temperature 허용.
+- **막힘→뚫음(실측)**: 기본 모델 첫 추측 `gemini-2.5-flash` = 404(이 키에선 호출불가).
+  실호출 스윕으로 실제 되는 모델 발견 → **`gemini-flash-lite-latest` 그린패스**(다른 flash 는 429 쿼터). (ERRORS #3)
+- APIError(429/404/인증) → LLMError 로 통일. usage(토큰) 수집.
+- **검증(실호출 원문)**: 기본값으로 `generate('한국어 한 단어…')` → `'안녕하세요.'`, usage in22/out2. ruff 통과.
+- 다음: (3-3) AnthropicProvider — Claude Opus 4.8 실호출(temperature 미전달).
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
