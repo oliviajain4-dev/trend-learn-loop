@@ -341,3 +341,15 @@
   github note·본문빈약·max_docs·summary. ruff 통과.
 - 실제 fetch 는 사용자 머신: `python -m tll.tracker.tracker` (scout→triage→track 데모).
 - 다음: **Reader** — 가져온 본문을 읽고 이해·부족판정("더 찾자" ReAct 결정점).
+
+## 2026-07-10 — [Reader] 독해 — ReAct 결정점 (에이전트 순서 4단계)
+- 하는 일: Tracker 본문을 LLM이 읽고 "이걸로 이 기술이 뭔지 교과서를 쓸 수 있나" 판단 →
+  충분=proceed(집필) / 부족=collect_more("더 찾자"). **모델이 다음 행동을 고름 = 진짜 ReAct.**
+- 본문 근거 이해 요지(understanding) 추출(지어내지 않음). 부족하면 뭐가 없는지(missing) → 재수집 힌트.
+- 경계: 판단은 LLM. 단 status!=ok·본문<80자는 **결정론 precheck**로 LLM 없이 '부족'(뻔한 실패에 토큰 0).
+  실패·JSON 오류는 지어내지 않고 '부족+error'.
+- 검증(오프라인, 목 LLM): **13체크 PASS** — 충분/부족 분기·precheck(비ok·빈약)·이해추출·missing·
+  malformed 격리·펜스·결정론·**precheck는 LLM 미호출(호출 카운트로 증명)**. ruff 통과.
+- 실제 LLM은 사용자 머신: `python -m tll.reader.reader` (scout→triage→track→read 데모).
+- **'가져오기' 절반 완료**: Scout(찾기)→Triage(고르기)→Tracker(본문)→Reader(독해·판단).
+  다음부터 '집필' 절반: **Author**(한국어 교과서·대조유추).
