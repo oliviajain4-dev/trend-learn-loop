@@ -227,6 +227,18 @@
   본문 [S#] 인용 실재(S1/S2/S3/S5), **인용 sid ⊆ 유효 sid(유령 인용 0)**, judgment 정상. ruff 통과.
 - 다음: piece 5 Verifier — CoVe + L1 인용 앵커링(결정론) + L4 NLI 인용검사.
 
+## 2026-07-10 — [piece 5] Verifier: L1 인용 앵커링 (결정론, LLM=0)
+- **정직한 범위 결정**: L4 NLI·CoVe 는 '출처 원문 전체'가 있어야 검증기 자신이 환각 안 함.
+  현재 Collector 는 본문 전체 미수집 → 근거 없이 돌리면 검증기가 환각(설계 철학 위반) → **유보**.
+  대신 결정론 L1 을 확실히. (이 유보 자체가 기획서 §2.5 "검증기가 환각하면 안 된다"의 실천.)
+- `verifier/anchoring.py`:
+  - `verify_brief(brief)`: 문장분할 → [S#] 추출 → 판정(phantom_citation/quote_mismatch/uncited/ok). LLM 판단 0.
+  - `apply_verification`: 위반(phantom/quote) 문장 제거 + unverified 이동(CoVe 삭제/수정의 결정론판), 계약 유지.
+- **검증(결정론, LLM 불필요)**: 깨끗한 rag.json → 위반0 passed. **[S9] 유령인용 주입 → 결정론 검출**,
+  apply 로 제거·이동·재검증 위반0·계약 유지. ruff 통과.
+- 이 검출 메커니즘이 piece 6 Eval-Harness 의 '환각 검출률' 측정 대상이 된다.
+- 다음: piece 6 Metrics+Eval-Harness — 골드셋·환각주입으로 Verifier 검출률 실측.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
