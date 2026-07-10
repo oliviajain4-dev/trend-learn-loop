@@ -194,6 +194,19 @@
 - **검증(실호출 원문)**: 기본값으로 `generate('한국어 한 단어…')` → `'안녕하세요.'`, usage in22/out2. ruff 통과.
 - 다음: (3-3) AnthropicProvider — Claude Opus 4.8 실호출(temperature 미전달).
 
+## 2026-07-10 — [shared/llm 3-3] AnthropicProvider (Claude, 키 미발급 확인)
+- claude-api 레퍼런스대로: messages.create(model=claude-opus-4-8, max_tokens, system?, messages).
+  **temperature 의도적 미전달**(Opus 4.8 은 주면 400). usage 수집, 에러→LLMError.
+- **막힘(외부 요인)**: 실호출하니 httpx 가 `UnicodeEncodeError` 로 깊게 크래시.
+  진단(값 노출 없이) → .env 의 ANTHROPIC_API_KEY 가 실제 키가 아니라 **한글 자리표시
+  "여기에…"**(길이9, 비-ASCII). 핸드오프의 "Claude 키 아직 없음"과 일치.
+- **뚫음**: 생성자에 ASCII 가드 추가 → 자리표시면 즉시 명확한 LLMError(원인·해법 안내).
+- **검증(실호출)**: ① 자리표시 키 → 깔끔한 LLMError(크래시 아님). ② 가짜 sk-ant(ASCII) 키 →
+  생성자 통과, generate() 가 **실제 API 에 도달해 401 을 LLMError 로 표면화**(연동 정상). ruff 통과.
+- **미결(정직 고지)**: Claude 성공 생성(그린패스)은 **실제 키 필요** → 사용자가 .env 에
+  진짜 ANTHROPIC_API_KEY 넣으면 즉시 동작. 그때까지 파이프라인은 Gemini 로 진행 가능.
+- 다음: (3-4) 레지스트리 — 키 있는 프로바이더만 자동 등록, 기본=Gemini.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
