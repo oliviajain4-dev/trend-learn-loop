@@ -397,3 +397,15 @@
   contrast_context·lessons(최신·kind)·정렬저장·손상복원. ruff 통과.
 - 데모(사용자 머신): `python -m tll.memory.memory` (전체 체인 → 검증 교과서 기억 → KB·회상 표시).
 - 다음: **Dashboard**(한국어 통합 뷰) → **Loop**(30분 자동).
+
+## 2026-07-10 — [Dashboard/Present] 한국어 대시보드 — 자체 완결 HTML (8단계)
+- 하는 일: 검증 교과서를 **서버 없이 브라우저로 여는 단일 HTML**로 산출. `src/tll/present/`.
+  최신순 카드 · 신선도("N시간 전") · **충실도%(색 배지)** · status · **원문 보기 링크** · 6섹션 · 미확인.
+- 왜 HTML(Streamlit 아님): 서버 불필요(파일 열기만)·의존성 0·순수 함수라 검증 용이·항상 최신.
+  기존 Streamlit 대시보드(`tll.dashboard`)는 그대로 — 이건 자율 교과서용 새 Presenter.
+- store: 교과서+지표를 JSON 저장(slug.json, 같은 주제 덮어써 최신 유지) → load_records → 렌더.
+- 안전: 모든 사용자 콘텐츠 HTML escape(스크립트 주입 차단). 순수 함수(같은 입력→같은 HTML).
+- 검증(오프라인, 순수): **12체크 PASS** — 주제·충실도배지·신선도·원문링크·섹션라벨·미확인·status·
+  최신순·유효HTML·escape·빈목록·store 왕복. ruff 통과. + 샘플 미리보기 HTML 생성.
+- 데모(사용자 머신): `python -m tll.present.html` (전체 체인 → 저장 → data/dashboard.html, 브라우저로 열기).
+- 다음(마지막): **Loop** — 전부를 30분마다 자동으로 감싸는 ReAct 스케줄러.
