@@ -164,3 +164,20 @@
   - `_interleave` 단위검증: HN3+GN2 → [hn,gn,hn,gn,hn] 정확. `_dedup`: 중복 1건 제거 확인.
   - ruff 통과.
 - **다음**: (5단계) provenance 검증 — 수집물의 url·날짜·수집시각이 실제로 차 있고 지어낸 값이 없는지 최종 확인.
+
+---
+
+## 2026-07-10 — [Collector 5단계] provenance 검증 (지어낸 값 없음 증명)
+- 방법: 수집 후 **원천 API 를 독립적으로 재호출**해 각 문서의 title/url/수치가 원본에
+  실제로 있는지 대조(passthrough 증명). "지어냄 없음"을 눈이 아니라 대조로 확인.
+- **결과(실행 원문)**:
+  - HN 6건: 제목·url·points·발행일(created_at) 이 재호출 원본과 **완전 일치**.
+  - GeekNews 2건(topic="디지털"): 제목·url 이 피드 원본과 일치.
+  - 필드 완전성(url=http·grade 1~3) + content_hash 재계산 일치 + collected_at 이 실제로 방금(10분 이내).
+- → **[ALL PASS] 수집물 provenance 실재·일치, 지어낸 값 없음.** 링크·날짜·수치는 전부 원본 유래.
+
+### Collector 정리 (③ 조각 완료)
+- models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
+- 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
+  collect(topic, source) 액션으로 그대로 호출 가능. summary 가 재수집 판단(전환점 1)의 관찰이 된다.
+- 실측 함정 2개를 '추측 금지·실응답 먼저'로 코딩 전에 차단: HN fuzzy(RAG↔Rage), GeekNews RSS→실제 Atom.
