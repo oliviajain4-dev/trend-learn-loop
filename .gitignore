@@ -17,6 +17,9 @@ __pycache__/
 output/
 *.log
 
+# 수집 원자료(디버그용, 휘발성 — 최종 브리핑 data/briefs 와 다름)
+data/collected/
+
 # 파이썬 패키징/도구 캐시
 *.egg-info/
 .ruff_cache/

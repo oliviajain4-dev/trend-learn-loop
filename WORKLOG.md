@@ -147,3 +147,20 @@
   실재 단어 `search("미첼")`=1건 → 실제 url(topic?id=31294)·published(2026-07-10) 원본 채워짐.
   grade=2 고정(국내 IT 기관). ruff 통과.
 - **다음**: (4단계) engine.collect() — 두 provider 를 돌려 중복제거·다양성·summary, RAG end-to-end.
+
+---
+
+## 2026-07-10 — [Collector 4단계] engine.collect() (end-to-end)
+- `collect(topic, sources=None, max_per_source=10, *, save, min_interval, max_total)`.
+  provider 선택 → 수집 → content_hash 중복제거 → 소스 round-robin 인터리브(다양성) → summary.
+- **설계 판단(중요)**: 한 소스만 결과가 있어도 **가짜 균형을 만들지 않는다**. 좋은 데이터를 버려
+  균형 맞추는 대신 summary(per_source_raw/final)에 불균형을 그대로 노출 → ReAct 루프의 관찰이
+  되어 "다른 소스 더 돌릴까"(전환점 1)를 모델이 판단하게 한다. (억지 균형 = 데이터 손실)
+- 전역 상태 없음: rate_limiter/robots_guard 를 collect() 호출마다 생성해 provider 에 주입.
+- `data/collected/<slug>.json` 저장은 디버그용(원자료, 최종 브리핑 아님) → `.gitignore` 추가.
+- **검증(실호출 원문 남김)**:
+  - `collect("RAG")` → HN 8 / GeekNews 0 (정직), dedup 0, total 8. summary 가 소스별 수를 그대로 노출.
+  - sources=["hackernews"] 필터 동작, 미지 provider "nope" 무시, save 로 rag.json 생성(+gitignore 확인).
+  - `_interleave` 단위검증: HN3+GN2 → [hn,gn,hn,gn,hn] 정확. `_dedup`: 중복 1건 제거 확인.
+  - ruff 통과.
+- **다음**: (5단계) provenance 검증 — 수집물의 url·날짜·수집시각이 실제로 차 있고 지어낸 값이 없는지 최종 확인.
