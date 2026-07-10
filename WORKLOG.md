@@ -260,6 +260,15 @@
 - **piece 6 완료**: 결정론 지표 + 검출률 실측 하네스.
 - 다음: piece 7 파이프라인 연결 — collect→write→verify→metrics → data/briefs 에 실제 브리핑 저장.
 
+## 2026-07-10 — [piece 7] 파이프라인 연결 (Phase 1 전체 완성)
+- `pipeline/run.py: run_pipeline(topic) -> PipelineResult`. 순서(결정론 워크플로우):
+  collect → write_brief(초안) → verify→apply_verification(L1 정리) → apply_metrics → data/briefs 저장.
+  LLM 은 집필에서만, 진위 판정은 결정론 코어(L1)가. CLI: `python -m tll.pipeline.run "<topic>"`.
+- **검증(실 end-to-end, 임시폴더)**: run_pipeline("LangChain",hackernews,6) →
+  status=verified, 지지율0.714/정밀도1.0/커버리지1.0/출처6, 위반0, 미확인1. 저장파일 재로딩 계약통과. ruff 통과.
+- **Phase 1 전체 7조각 완료**: 대시보드·Collector·shared/llm·Analyst·Verifier·Metrics+Harness·파이프라인.
+- 남은 한계(정직): 본문 원문 미수집 → L4/CoVe·진짜 FActScore/RAGAS 유보(프록시로 대체), Anthropic 실키 미발급.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
