@@ -311,3 +311,18 @@
   first_seen 박제, seen.json 키정렬, 소스 실패 격리(HN 403이어도 GeekNews 생존), 결정론(복제 store→같은 new).
 - ruff 0.15.21 → All checks passed.
 - 남은 것(정직): 실제 폴링·git 커밋은 사용자 머신. 다음 조각 = **Triage(에이전트 판단)**.
+
+## 2026-07-10 — [Triage] 선별 (에이전트 순서 2단계, 첫 '에이전트' 조각)
+- 하는 일: Scout 후보를 LLM이 '배울 가치 있는 IT/AI 기술이냐(교과서 감)' 판단 →
+  keep/category/worth/reason → 상위 N 선별. `src/tll/triage/`.
+- **경계**: 판단은 LLM(에이전트), 최종 선별(top-N 정렬)·집계는 결정론. LLM은 제목·소스·등급·신호만
+  보고 분류/가치판단만 — 원문 fetch·수치 생성 없음(DNA). 여기부터 '모델이 다음 행동을 고른다'.
+- 재사용: `shared/llm get_provider().generate(system=...)`, writer 의 JSON 추출 패턴
+  (펜스 제거 → `[ ]` 슬라이스 → json.loads).
+- 견고화: 잘못된 JSON/키없음/LLM에러 → 지어내지 않고 `summary.mode="error"` 정직 노출.
+  미판단 후보는 keep=False("미판단")로 누락 숨김 방지. 범위밖/중복 i 무시.
+  소스 라운드로빈(max_judge 컷에서 한국어 소스 보호).
+- 검증(오프라인, 목 LLM): **14체크 PASS** — 파싱·선별순서(worth desc)·top_n컷·펜스·
+  malformed 격리·미판단·빈입력·결정론·interleave 공정. ruff 통과.
+- 실제 LLM(Gemini) 호출은 사용자 머신: `python -m tll.triage.triage` (scout→triage 데모, res.candidates 전체 판단).
+- 다음: **Tracker** — 선별 주제의 공식 문서 '본문' 수집(그 "반쪽" 구멍 메우기).
