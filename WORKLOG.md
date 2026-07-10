@@ -249,6 +249,17 @@
 - **검증**: rag.json → precision1.0/coverage0.467, status verified. 유령인용 주입 → precision 0.875, status draft. ruff 통과.
 - 다음: (6-2) Eval-Harness — 환각 주입 → Verifier 검출률(recall)·오탐 실측.
 
+## 2026-07-10 — [piece 6-2] ★ Eval-Harness (환각 검출률 실측)
+- `metrics/harness.py`: 골드셋(data/briefs)에 조작 문장 3유형 주입 → verify_brief → 검출 집계.
+  - phantom_citation(유효 아닌 [S99]) = 잡아야 함(violation)
+  - uncited_fabrication(인용없는 거짓) = 표시해야 함(uncited)
+  - plausible_fabrication(유효 [S1]+거짓 내용) = **L1 은 구조적으로 못 잡음**(본문 NLI 필요) → 정직 노출
+- **실측 리포트(원문)**: 브리핑 3건·주입 9건 → **검출률(recall)=1.0, 오탐=0**.
+  phantom 3/3, uncited 3/3, plausible 0/3(못 잡는 게 정답 — 숨기지 않음).
+- 이게 과제의 "AI가 틀리는 순간과 그걸 잡는 법" 실측 증거. 못 잡는 유형까지 드러내는 게 핵심.
+- **piece 6 완료**: 결정론 지표 + 검출률 실측 하네스.
+- 다음: piece 7 파이프라인 연결 — collect→write→verify→metrics → data/briefs 에 실제 브리핑 저장.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의

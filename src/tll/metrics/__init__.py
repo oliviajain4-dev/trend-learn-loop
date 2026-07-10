@@ -9,5 +9,12 @@
 """
 
 from tll.metrics.compute import apply_metrics, compute_metrics
+from tll.metrics.harness import HarnessReport, inject, run_harness
 
-__all__ = ["apply_metrics", "compute_metrics"]
+__all__ = [
+    "apply_metrics",
+    "compute_metrics",
+    "HarnessReport",
+    "inject",
+    "run_harness",
+]
