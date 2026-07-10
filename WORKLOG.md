@@ -176,7 +176,16 @@
   - 필드 완전성(url=http·grade 1~3) + content_hash 재계산 일치 + collected_at 이 실제로 방금(10분 이내).
 - → **[ALL PASS] 수집물 provenance 실재·일치, 지어낸 값 없음.** 링크·날짜·수치는 전부 원본 유래.
 
-### Collector 정리 (③ 조각 완료)
+## 2026-07-10 — [shared/llm 3-1] 설정 로더 + LLM 추상 인터페이스
+- 전체 진도 재정의(분모 7): 1.대시보드 2.Collector ✅ / 3.shared/llm 4.Analyst 5.Verifier 6.Metrics+Harness 7.파이프라인.
+- `shared/config.py`: .env 에서만 키 로드(하드코딩 금지). get_key/has_key, 없으면 ConfigError.
+- `shared/llm/base.py`: LLMProvider(추상)·LLMResponse·LLMError. temperature 는 선택
+  (Opus 4.8 은 temperature 주면 400 이라 각 프로바이더가 알아서 처리).
+- 새 의존성(사유): `google-genai`(Gemini 집필 주력), `anthropic`(교차모델 검증). requirements 반영.
+- 검증: ruff + base/config 임포트·동작(키 존재·없는키 ConfigError) 통과.
+- 다음: (3-2) GeminiProvider 를 실제 1회 호출로 검증.
+
+## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
   collect(topic, source) 액션으로 그대로 호출 가능. summary 가 재수집 판단(전환점 1)의 관찰이 된다.
