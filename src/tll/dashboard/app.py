@@ -46,16 +46,40 @@ def _load_briefs() -> tuple[list[Brief], list[str]]:
     return briefs, errors
 
 
+@st.cache_data(ttl=300, show_spinner="해커뉴스 불러오는 중…")
+def _load_hn():
+    """HN 상위 스토리를 실데이터로. 5분 캐시(API 예의) + 새로고침 버튼으로 무효화."""
+    from tll.collector.trends import fetch_top_stories
+
+    return fetch_top_stories(limit=30)
+
+
 def main() -> None:
     st.set_page_config(page_title="TLL — 정체 브리핑", page_icon="🧭", layout="wide")
 
     with st.sidebar:
         st.markdown("### 🧭 TLL")
         st.caption("Trend · Learn · Loop")
+        page = st.radio(
+            "화면", ["정체 브리핑", "트렌드 · 해커뉴스"], label_visibility="collapsed"
+        )
         if st.button("🔄 데이터 새로고침", width="stretch"):
             _load_briefs.clear()
+            _load_hn.clear()
             st.rerun()
 
+    # 트렌드(해커뉴스) 화면 — 실데이터 수집
+    if page == "트렌드 · 해커뉴스":
+        try:
+            feed = _load_hn()
+        except Exception as e:  # 네트워크 실패 등은 숨기지 않고 노출
+            st.title("🔶 트렌드 — 해커뉴스")
+            st.error(f"해커뉴스 로드 실패: {e}")
+            return
+        render.render_hn_feed(feed)
+        return
+
+    # 정체 브리핑 화면
     briefs, errors = _load_briefs()
 
     # 계약 위반 파일은 숨기지 않고 노출 (정직 원칙)

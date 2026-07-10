@@ -9,10 +9,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from tll.collector.trends import HNFeed
 from tll.schema import (
     SECTION_ORDER,
     Brief,
@@ -321,3 +324,51 @@ def render_detail(brief: Brief) -> None:
     st.divider()
     _render_sources(brief.sources)
     _render_unverified(brief.unverified)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 트렌드 — 해커뉴스 피드 (실데이터)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _time_ago(unix_ts: int) -> str:
+    """게시 unix 시각을 'N분/시간/일 전'으로. (표시용, 원본 수치는 손대지 않음)"""
+    if not unix_ts:
+        return "시간 미상"
+    secs = int((datetime.now(timezone.utc) - datetime.fromtimestamp(unix_ts, tz=timezone.utc)).total_seconds())
+    secs = max(secs, 0)
+    mins = secs // 60
+    if mins < 1:
+        return "방금"
+    if mins < 60:
+        return f"{mins}분 전"
+    hours = mins // 60
+    if hours < 24:
+        return f"{hours}시간 전"
+    return f"{hours // 24}일 전"
+
+
+def render_hn_feed(feed: HNFeed) -> None:
+    """해커뉴스 상위 스토리를 순위대로. 점수·댓글·링크는 API 원본."""
+    st.title("🔶 트렌드 — 해커뉴스")
+    dropped = f" · 제외 {feed.dropped}" if feed.dropped else ""
+    st.caption(f"출처: {feed.source} · 수집 {feed.collected_at} · 요청 {feed.fetched}건{dropped}")
+    st.caption(
+        "점수·댓글수·링크는 **API 원본**입니다(LLM 생성 아님). "
+        "제목은 HN 원문(주로 영어) 그대로 — 번역해 지어내지 않습니다."
+    )
+    st.divider()
+
+    if not feed.stories:
+        st.info("불러온 스토리가 없습니다.")
+        return
+
+    for rank, s in enumerate(feed.stories, 1):
+        st.markdown(
+            f"**{rank}.** [{s.title}]({s.link}) "
+            f"<span style='color:#9ca3af;font-size:0.8rem;'>({s.domain})</span>  \n"
+            f"<span style='color:#6b7280;font-size:0.82rem;'>"
+            f"▲ {s.score}점 · 💬 <a href='{s.hn_url}' target='_blank'>{s.descendants} 댓글</a> · "
+            f"{s.by} · {_time_ago(s.time)}</span>",
+            unsafe_allow_html=True,
+        )
