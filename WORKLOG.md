@@ -90,4 +90,26 @@
   네트워크 실패는 숨기지 않고 화면에 노출.
 - **검증**: HN 수집기 실호출(상위 5건 실데이터 확인) → ruff 통과 → AppTest 로 두 화면 모두 예외 0,
   피드 항목·점수 표기 존재 단언 통과.
-- **재사용성**: 이 수집기는 대시보드용이자 나중 파이프라인 Collector 단계 그대로 재사용.
+- **재사용성**: 이 트렌드 피드는 대시보드용. 파이프라인 '주제 수집기'는 별도(아래).
+
+---
+
+## 2026-07-10 — [Collector 1단계] 데이터 계약 + 안전장치
+- 목표: LLM 없는 순수 결정론 수집기의 토대. 파이프라인이 topic 으로 여러 소스를 모아
+  CollectedDoc 로 정규화하고, 나중에 ReAct 루프가 collect(topic, source) 액션으로 호출.
+- **models.py**: `CollectedDoc`(source_type/title/org/url/published_at/collected_at/grade/text/content_hash),
+  `CollectionResult`(topic/documents/summary), `to_source()`(→ schema.Source 형식),
+  `compute_content_hash`(url+title, 중복제거), `grade_from_domain`(1=arxiv 등, 2=공식/기관, 3=블로그).
+  - `content_hash` 는 `__post_init__` 에서 자동 채움.
+- **rate_limiter.py**: 도메인별 최소간격(기본 1.5s). 다음 허용시각을 락 안에서 예약,
+  sleep 은 락 밖 → 스레드 안전. **전역 상태 없음**(호출마다 인스턴스, ReAct 호환).
+- **robots_guard.py**: robots.txt Disallow 면 스킵. 실패/없음 → 보수적 허용. 도메인별 캐시.
+  UA="TLLCollector/0.1". (HN API 는 이 가드 예외, 예의상 rate limit 만.)
+- **검증**(자기검증 스크립트, 실행 원문 남김):
+  1) content_hash 결정론(같은 입력 동일/다른 입력 상이)
+  2) grade 휴리스틱(arxiv=1/openai=2/blog=3)
+  3) **to_source → schema.Source 실제 편입**: sid 만 붙이면 유효한 Source 가 됨(date=published_at 대응)
+  4) RateLimiter: 같은 도메인 2번째 0.5s 대기, 다른 도메인 0s(간격 정확)
+  5) RobotsGuard 라이브: news.hada.io / news.ycombinator.com allowed=True
+  → ruff 통과 + [ALL PASS].
+- **다음**: (2단계) HackerNewsProvider — HN Algolia 검색 API 실호출로 진짜 title/url 확인.
