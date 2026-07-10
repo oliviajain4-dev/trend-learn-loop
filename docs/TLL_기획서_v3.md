@@ -162,3 +162,17 @@
 - Anthropic — Building Effective Agents: https://www.anthropic.com/engineering/building-effective-agents
 - STORM — Writing Wikipedia-like Articles from Scratch: https://arxiv.org/abs/2402.14207 · 코드 https://github.com/stanford-oval/storm
 - Deep Research survey (autonomous research agents): https://arxiv.org/abs/2508.12752
+
+---
+
+## 부록 A — 출처 등급 정제 (2026-07-10, Tracker 구현 중 확정)
+
+§5를 실데이터·사용자 논의로 정제: **등급 = 원천 근접도(1차/2차/3차), '학술이냐'가 아님.**
+- **1급(1차)**: 만든 곳이 직접 낸 것. **제작사 공식 발표도 1급**(논문 없어도 그게 원천). 성격 태그로 구분 —
+  `제작사`(자기발표=최고 근거이나 미검증·마케팅), `논문`/`레포`(외부검증/실제 코드).
+- **2급(2차)**: 테크 뉴스. **3급(3차)**: 블로그·커뮤니티.
+
+**규칙:** ① "제작사 발표 vs 나중 논문"이 다르면 등급으로 승자를 정하지 않고 둘 다 날짜와 함께 노출 —
+일치=신뢰↑ / 불일치=⚠️충돌(다출처 대조는 Author/Verifier). ② 제작사의 평가성 주장("최고/최초")은
+1급이라도 "제작사 주장(미검증)"으로 표시(사실 vs 자랑). ③ 등급표는 화이트리스트라 불완전 →
+놓친 공식 기관은 "미확인" 표기 + 목록 점진 보강.

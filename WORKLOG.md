@@ -326,3 +326,18 @@
   malformed 격리·미판단·빈입력·결정론·interleave 공정. ruff 통과.
 - 실제 LLM(Gemini) 호출은 사용자 머신: `python -m tll.triage.triage` (scout→triage 데모, res.candidates 전체 판단).
 - 다음: **Tracker** — 선별 주제의 공식 문서 '본문' 수집(그 "반쪽" 구멍 메우기).
+
+## 2026-07-10 — [Tracker] 추적 — 공식 문서 '본문' 수집 (에이전트 순서 3단계)
+- 하는 일: Triage 선별 주제의 링크를 따라가 **본문을 실제로 수집**(그 "검증 반쪽" 구멍 메우기). `src/tll/tracker/`.
+- **등급 정제(사용자 합의)**: '학술이냐'가 아니라 **원천 근접도(1차/2차/3차)**로. **제작사 공식 발표=1급(1차)**.
+  같은 1급도 성격 태그: `제작사`(자기발표=미검증)/`논문`(외부검증)/`레포`. 2차=뉴스, 3차=블로그·커뮤니티.
+  "제작사 주장 vs 논문 충돌"은 등급이 아니라 다출처 대조·충돌표기(Author/Verifier)가 처리 — 여기선 등급·태그만.
+- 구성: `grading.classify_source`(도메인→등급·성격), `extract.extract_text`(stdlib html.parser, 의존성0),
+  `tracker.track`(robots·rate limit 준수).
+- 정직 처리(지어내지 않음): 공식링크없음(HN 토론)=no_official, robots=blocked, 비HTML=non_html,
+  실패=fetch_error, 본문<200자='JS 렌더 가능' 경고, 레포='3자 여부 미확인' note.
+- 한계(정직): 등급표가 화이트리스트라 불완전(Tencent 등 놓치면 3급). '진짜 공식 소스 검색'은 다음 개선.
+- 검증(오프라인, 목 fetcher/robots): **23체크 PASS** — 등급분류·본문추출(script/style 제외)·상태 5종·
+  github note·본문빈약·max_docs·summary. ruff 통과.
+- 실제 fetch 는 사용자 머신: `python -m tll.tracker.tracker` (scout→triage→track 데모).
+- 다음: **Reader** — 가져온 본문을 읽고 이해·부족판정("더 찾자" ReAct 결정점).
