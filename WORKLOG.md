@@ -207,6 +207,15 @@
   진짜 ANTHROPIC_API_KEY 넣으면 즉시 동작. 그때까지 파이프라인은 Gemini 로 진행 가능.
 - 다음: (3-4) 레지스트리 — 키 있는 프로바이더만 자동 등록, 기본=Gemini.
 
+## 2026-07-10 — [shared/llm 3-4] 레지스트리 (piece 3 완성)
+- `get_provider(name=None)`(지연생성·캐시, 기본=Gemini), `available_providers()`(유효키만),
+  `default_provider_name()`. 미지/키없음 → LLMError.
+- **검증(실호출)**: 기본 Gemini 그린패스('감사합니다.'), available=['gemini'](anthropic 자리표시라 제외),
+  anthropic/미지 → LLMError, 캐시(동일 인스턴스) 확인. ruff 통과.
+- **piece 3(shared/llm) 완료**: config + LLMProvider 추상 + Gemini(그린) + Anthropic(가드) + 레지스트리.
+  → Analyst/Verifier 가 `get_provider()` 로 벤더 무관하게 LLM 사용 가능.
+- 다음: piece 4 Analyst — 수집물(CollectedDoc)로 문장별 [S#] 브리핑 초안 집필.
+
 ## 2026-07-10 — Collector 정리 (③ 조각 완료)
 - models(계약)·rate_limiter·robots_guard → HackerNewsProvider → GeekNewsProvider → engine → provenance검증.
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
