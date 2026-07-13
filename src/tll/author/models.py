@@ -10,12 +10,11 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 SECTION_KEYS = (
-    "skeleton",  # 큰 뼈대(구조/틀)
-    "background",  # 왜 나왔나(배경·계보)
-    "contrast_analogy",  # 대조·유추(뭐가 비슷/다른가) — 핵심
-    "why_needed",  # 왜 필요한가/어떤 문제를 푸나
-    "outlook",  # 전망(채택신호·한계·리스크)
-    "quickstart",  # 바로 따라하기 개요
+    "gist",     # 한눈에 — 뭐고 어떻게 생겼나 (자연스럽게 풀어)
+    "compare",  # 기존/유사 기술과 비교 ★ 가장 두껍게 (같은 점·다른 점·언제 뭘·비유)
+    "why",      # 왜 필요한가 / 어떤 문제를 푸나
+    "watch",    # 전망·주의 (채택신호·한계·리스크)
+    "try",      # 바로 써보기
 )
 
 
