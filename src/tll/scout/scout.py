@@ -31,7 +31,13 @@ from tll.scout.seen_store import SeenStore
 logger = logging.getLogger(__name__)
 
 DEFAULT_STORE = "data/memory/seen.json"
-DEFAULT_SOURCES = ("hackernews", "geeknews")
+DEFAULT_SOURCES = ("hackernews", "geeknews", "reddit", "official")
+DEFAULT_OFFICIAL_FEEDS = (
+    "https://huggingface.co/blog/feed.xml",
+    "https://blog.google/technology/ai/rss/",
+    "https://openai.com/blog/rss.xml",
+    "https://www.anthropic.com/rss.xml",
+)
 
 
 def _hn_candidates(limit: int, now: datetime) -> list[TrendCandidate]:
@@ -80,6 +86,110 @@ def _gn_candidates(
     return out
 
 
+def _reddit_candidates(limit: int, now: datetime, fetcher) -> list[TrendCandidate]:
+    """Reddit(r/LocalLLaMA·MachineLearning 등) 상위글 → 후보. fetcher()->JSON(주입가능)."""
+    data = fetcher() or {}
+    out: list[TrendCandidate] = []
+    for ch in (data.get("data", {}).get("children") or [])[:limit]:
+        d = ch.get("data", {}) if isinstance(ch, dict) else {}
+        title = (d.get("title") or "").strip()
+        if not title:
+            continue
+        url = d.get("url_overridden_by_dest") or d.get("url") or f"https://www.reddit.com{d.get('permalink', '')}"
+        cu = d.get("created_utc")
+        pub = unix_to_iso(int(cu)) if cu else None
+        net = urlparse(url).netloc
+        domain = (net[4:] if net.startswith("www.") else net) or "reddit.com"
+        out.append(
+            TrendCandidate(
+                cid=compute_content_hash(url, title),
+                source="reddit",
+                title=title,
+                url=url,
+                domain=domain,
+                grade=grade_from_domain(domain),
+                score=int(d.get("score") or 0),
+                comments=int(d.get("num_comments") or 0),
+                published_at=pub,
+                age_label=age_label(pub, now),
+            )
+        )
+    return out
+
+
+def default_reddit_fetcher(subreddits=("LocalLLaMA", "MachineLearning"), limit: int = 25) -> dict:
+    """라이브 Reddit 공개 top.json 수집(무인증, UA 필요). 실패 소스는 건너뜀."""
+    import json
+    import urllib.request
+
+    children: list = []
+    for sub in subreddits:
+        url = f"https://www.reddit.com/r/{sub}/top.json?t=week&limit={limit}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "TLL/0.1 (trend-learn-loop)"})
+            with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
+                data = json.loads(r.read().decode("utf-8", "replace"))
+            children += data.get("data", {}).get("children") or []
+        except Exception:  # noqa: BLE001
+            continue
+    return {"data": {"children": children}}
+
+
+def _official_candidates(limit: int, now: datetime, fetcher) -> list[TrendCandidate]:
+    """공식/벤더 발표(RSS) → 후보. '기술이 최초 발표되는 원천'(발견용). fetcher()->[{title,url,published}]."""
+    items = fetcher() or []
+    out: list[TrendCandidate] = []
+    for it in items[:limit]:
+        title = (it.get("title") or "").strip()
+        if not title:
+            continue
+        url = it.get("url") or ""
+        net = urlparse(url).netloc
+        domain = (net[4:] if net.startswith("www.") else net) or "official"
+        pub = it.get("published") or None
+        out.append(
+            TrendCandidate(
+                cid=compute_content_hash(url, title),
+                source="official",   # 역할=발표원천(자기홍보라 '중요도 독립투표'엔 안 낌)
+                title=title,
+                url=url,
+                domain=domain,
+                grade=1,             # 1급(1차 출처)
+                score=0,             # 버즈 점수 없음 — 발견 신호(존재)로만
+                published_at=pub,
+                age_label=age_label(pub, now),
+            )
+        )
+    return out
+
+
+def default_official_fetcher(feeds=DEFAULT_OFFICIAL_FEEDS, per_feed: int = 8) -> list[dict]:
+    """벤더 블로그/뉴스 RSS·Atom 파싱(무인증). 실패 피드는 건너뜀."""
+    import re
+    import urllib.request
+
+    def _txt(x: str) -> str:
+        x = re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", x or "", flags=re.S)
+        return re.sub(r"<[^>]+>", "", x).strip()
+
+    items: list[dict] = []
+    for feed in feeds:
+        try:
+            req = urllib.request.Request(feed, headers={"User-Agent": "TLL/0.1 (trend-learn-loop)"})
+            with urllib.request.urlopen(req, timeout=10) as r:  # noqa: S310
+                xml = r.read().decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001
+            continue
+        for b in re.findall(r"<(?:item|entry)\b.*?</(?:item|entry)>", xml, re.S)[:per_feed]:
+            mt = re.search(r"<title[^>]*>(.*?)</title>", b, re.S)
+            ml = re.search(r'<link[^>]*href="([^"]+)"', b) or re.search(r"<link[^>]*>(.*?)</link>", b, re.S)
+            mp = re.search(r"<(?:pubDate|published|updated)[^>]*>(.*?)</", b, re.S)
+            if mt:
+                items.append({"title": _txt(mt.group(1)), "url": _txt(ml.group(1)) if ml else "",
+                              "published": mp.group(1).strip() if mp else None})
+    return items
+
+
 def scout(
     sources: list[str] | None = None,
     *,
@@ -88,6 +198,8 @@ def scout(
     now: datetime | None = None,
     hn_fetch: Callable[[], list[TrendCandidate]] | None = None,
     gn_fetch: Callable[[], list[TrendCandidate]] | None = None,
+    reddit_fetch: Callable[[], list[TrendCandidate]] | None = None,
+    official_fetch: Callable[[], list[TrendCandidate]] | None = None,
 ) -> ScoutResult:
     now = now or datetime.now(timezone.utc)
     now_iso = now.isoformat(timespec="seconds")
@@ -109,6 +221,18 @@ def scout(
         except Exception as e:
             logger.warning("Scout GeekNews 실패: %s", e)
             errors["geeknews"] = str(e)
+    if "reddit" in sources:
+        try:
+            cands += (reddit_fetch or (lambda: _reddit_candidates(limit_per_source, now, default_reddit_fetcher)))()
+        except Exception as e:
+            logger.warning("Scout Reddit 실패: %s", e)
+            errors["reddit"] = str(e)
+    if "official" in sources:
+        try:
+            cands += (official_fetch or (lambda: _official_candidates(limit_per_source, now, default_official_fetcher)))()
+        except Exception as e:
+            logger.warning("Scout Official 실패: %s", e)
+            errors["official"] = str(e)
 
     # 중복 제거(소스 간 동일 링크) → 순위: 인기(score)↓, 동점이면 최신↓
     seen_cid: set[str] = set()
