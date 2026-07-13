@@ -425,3 +425,41 @@
   저장·대시보드·lessons·decisions·무진전 가드·결정론. **ruff(전체 src/tll) 통과·9조각 임포트 OK**.
 - 데모(사용자 머신): `python -m tll.loop.loop`(1사이클) · `python -m tll.loop.loop --watch`(30분 자동).
 - **★ 에이전트 9조각 전부 완성**: Scout·Triage·Tracker·Reader·Author·Fact-Check·Memory·Dashboard·Loop.
+
+## 2026-07-10 — [모델 선택] Gemini ↔ Claude 전환 + 대시보드 표시
+- 요청: 앤트로픽 키도 넣었으니 Gemini·Claude 골라 쓰고, 대시보드에 지금 뭘 쓰는지 표시 + 쉬운 전환.
+- `shared/llm/select.py`: resolve_provider_name(우선순위: 인자 > TLL_PROVIDER(.env/env) > gemini),
+  resolve_model_name(TLL_MODEL), provider_label. 미지값→기본 gemini.
+- Loop 배선: run_cycle(provider_name)→get_provider 로 프로바이더 생성→triage·reader·author 주입.
+  레코드·summary·대시보드에 provider 기록(llm_call 주입 테스트 시엔 생성 생략).
+- Dashboard: 헤더 "현재 사용 모델: Claude/Gemini" + 카드마다 만든 모델 배지(비교용).
+- **쉬운 전환 3가지**: `--provider anthropic|gemini`(일회) / `$env:TLL_PROVIDER="anthropic"`(세션) /
+  .env 에 `TLL_PROVIDER=`(영구 기본). 실행 시 '사용가능' 목록 출력.
+- 정직 고지: Claude 실호출은 사용자 머신(키·모델 claude-opus-4-8). 모델 안 맞으면 `TLL_MODEL` 로 교체.
+- 검증(오프라인): 코어 루프 회귀 통과 + 프로바이더 9체크(summary/레코드/대시보드/env/기본/라벨) PASS. ruff 전체 통과.
+- 파일도구 편집 손상 회피: store/html/loop 전부 bash `cat >` 전체 재작성 + 같은 명령 즉시 검증(ERRORS #6 교훈 적용).
+
+## 2026-07-10 — [관리>비용] Streamlit 관리 콘솔 + 실사용 토큰·요금 정확 계산
+- 요청: 관리>비용 탭 — 어떤 API 쓰는지·유료면 매일 얼마·월 합계. "정확하게."
+- UI 결정(사용자): 관리는 **Streamlit**(인터랙티브). 교과서 대시보드는 그대로 **HTML**(스트림릿 아님).
+  계산 엔진은 UI 무관 순수 파이썬 → 뷰 바꿔도 재작업 0.
+- **비용 엔진 `src/tll/cost/`** (추정 아니라 실측):
+  - pricing: 실제 공식 단가(웹 확인, 기준일 2026-07-10) — Opus 4.8 $5/$25, Gemini Flash-Lite $0.10/$0.40 등.
+    모델명 substring 매칭(구체→일반), 미등록·별칭은 정직 플래그.
+  - usage: **TrackingProvider** 가 프로바이더를 감싸 generate 마다 실제 토큰(provider.usage) JSONL 로깅(무침투).
+    monthly_report = 일별/모델별/월합계.
+  - 정직 고지: 정가 기준(캐싱·배치 할인 미반영), Gemini 무료 티어면 쿼터 내 실제 $0(유료 환산),
+    '...-latest' 별칭 단가는 추정.
+- Loop 배선: run_cycle 이 프로바이더를 TrackingProvider 로 감쌈 → 모든 사이클 호출 자동 집계.
+- **관리앱 `src/tll/manage/app.py`**: 사이드바 관리>[개요, 비용]. 비용=현재모델·월선택·KPI·일별표+막대차트·
+  모델별·단가표(출처). 실행 `streamlit run src/tll/manage/app.py`.
+- 검증(오프라인): 비용 엔진 **18체크 PASS**(정확계산·집계·TrackingProvider·미등록·월필터). 앱은 streamlit 미설치라
+  **가짜 st/pd 스텁으로 실제 exec** → 비용 화면 렌더·합계 $30.40 정확 확인. ruff 전체 통과. (실 구동은 사용자 .venv.)
+
+## 2026-07-10 — [통합] Streamlit 한 앱으로 합침 (교과서 + 관리·비용)
+- 사용자 지적: 교과서(HTML)와 관리(Streamlit)가 따로 열려 헷갈림 → "스트림릿 하나로 합쳐줘".
+- `manage/app.py` 통합: 사이드바 **📚 교과서 / ⚙️ 관리(→ 개요·비용)**. 교과서 탭은 `present.store` 의
+  같은 레코드를 읽어 렌더(데이터 공용, 재작업 0 — 엔진/뷰 분리 덕분). 실행 `streamlit run src/tll/manage/app.py` 한 곳.
+- Loop: HTML(data/dashboard.html)은 선택적 자동 export 로 남기되 안내 문구는 통합 앱 하나로 정리(F541 ruff --fix).
+- 검증(오프라인, 가짜 st/pd 스텁으로 두 화면 실제 exec): 교과서(제목 렌더)·비용(합계 $30 정확) PASS.
+  코어 루프·프로바이더 회귀 유지. ruff 전체 통과.
