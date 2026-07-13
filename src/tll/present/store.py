@@ -1,7 +1,7 @@
 """교과서 저장/로드 (JSON). 대시보드가 읽을 레코드.
 
-레코드 = Textbook.to_dict() + {metrics(충실도 등), saved_at}. 결정론 저장(정렬·원자적).
-로드는 dict 그대로 반환(렌더는 dict 로 처리 — 재구성 불필요).
+레코드 = Textbook.to_dict() + {metrics(충실도), provider(사용 모델), saved_at, concept_cid, concept_name}.
+저장은 원자적(tmp→replace), 로드는 손상 파일 스킵.
 """
 
 from __future__ import annotations
@@ -21,13 +21,28 @@ def _slug(topic: str) -> str:
 
 
 def save_textbook(
-    tb, *, metrics: dict | None = None, out_dir: str = DEFAULT_DIR, now: datetime | None = None
+    tb,
+    *,
+    metrics: dict | None = None,
+    provider: str = "",
+    out_dir: str = DEFAULT_DIR,
+    now: datetime | None = None,
+    concept_cid: str = "",
+    concept_name: str = "",
+    depth: str = "교과서",
 ) -> str:
-    """검증된 Textbook + 지표를 레코드로 저장. 파일명=slug(topic).json (같은 주제는 덮어씀=최신 유지)."""
+    """검증된 Textbook + 지표 + 사용 모델을 레코드로 저장(같은 주제 덮어씀=최신).
+
+    concept_cid/concept_name: 이 교과서가 '어떤 기술 개념'을 설명하는지 꼬리표(화면이 기술 중심으로 묶는 키).
+    """
     now_iso = (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     rec: dict[str, Any] = tb.to_dict()
     rec["metrics"] = metrics or {}
+    rec["provider"] = provider
     rec["saved_at"] = now_iso
+    rec["concept_cid"] = concept_cid
+    rec["concept_name"] = concept_name
+    rec["depth"] = depth
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"{_slug(tb.topic)}.json")
     tmp = f"{path}.tmp"

@@ -3,7 +3,7 @@
 이 모듈이 "진실의 형식"을 정한다:
   - 지금은 샘플 브리핑(status="sample")을, 나중엔 진짜 파이프라인이
     같은 형식으로 data/briefs/*.json 을 쌓는다.
-  - 대시보드(tll.dashboard)는 이 스키마를 통해서만 데이터를 읽는다.
+  - 화면(tll.present / tll.manage)은 이 스키마를 통해서만 데이터를 읽는다.
 
 설계 원칙(프로젝트 DNA와 정렬):
   - **결정론·투명**: pydantic 같은 "마법" 대신 stdlib dataclass + 눈에 보이는 검증.
