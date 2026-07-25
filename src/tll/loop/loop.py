@@ -83,20 +83,23 @@ def run_cycle(
     signals_path = signals_path or DEFAULT_SIGNALS
 
     # 모델 선택 + 사용량 추적 래핑. llm_call 주입 시(테스트)엔 실제 생성/추적 생략.
+    # 용도별로 별도 TrackingProvider 로 감싸 비용을 '무엇에 썼는지'(stage)까지 남긴다(관리>비용 화면 근거).
     prov_name = resolve_provider_name(provider_name)
     model = resolve_model_name(model_name)
-    prov = (
-        TrackingProvider(get_provider(prov_name), provider_name=prov_name, path=usage_path)
-        if llm_call is None
-        else None
-    )
+    if llm_call is None:
+        _base = get_provider(prov_name)
+        prov_screen = TrackingProvider(_base, provider_name=prov_name, path=usage_path, stage="선별·판단")
+        prov_write = TrackingProvider(_base, provider_name=prov_name, path=usage_path, stage="집필")
+        prov_meta = TrackingProvider(_base, provider_name=prov_name, path=usage_path, stage="개념·설명서")
+    else:
+        prov_screen = prov_write = prov_meta = None
 
     # 개념 레지스트리 + 신호 기록 준비 (v4 concept-centric 랭킹)
     registry = ConceptRegistry.load(registry_path)
     if llm_call is not None:
         concept_call = llm_call
-    elif prov is not None:
-        concept_call = lambda pr, sy: prov.generate(pr, system=sy, max_tokens=64, model=model).text  # noqa: E731
+    elif prov_meta is not None:
+        concept_call = lambda pr, sy: prov_meta.generate(pr, system=sy, max_tokens=64, model=model).text  # noqa: E731
     else:
         concept_call = None
     gh_fetch = github_fetcher
@@ -113,7 +116,7 @@ def run_cycle(
             if has_key("ANTHROPIC_API_KEY" if _other == "anthropic" else "GEMINI_API_KEY"):
                 # 검증·재집필은 최고가(Opus) 대신 저렴한 모델로 기본 설정(비용↓). TLL_VERIFIER_MODEL 로 덮어쓰기 가능.
                 _vmodel = os.environ.get("TLL_VERIFIER_MODEL") or ("claude-sonnet-5" if _other == "anthropic" else None)
-                _vprov = TrackingProvider(get_provider(_other), provider_name=_other, path=usage_path)
+                _vprov = TrackingProvider(get_provider(_other), provider_name=_other, path=usage_path, stage="교차검증")
                 verifier_call = lambda pr, sy: _vprov.generate(pr, system=sy, max_tokens=1500, model=_vmodel).text  # noqa: E731
                 verifier_label = provider_label(_other)
         except Exception as e:  # noqa: BLE001
@@ -147,7 +150,7 @@ def run_cycle(
                 fn = repo_by_name.get(c.canonical, "")
                 return (github_readme(fn, _text_fetch), f"https://github.com/{fn}") if fn else ("", "")
 
-            manual_call = lambda pr, sy: prov.generate(pr, system=sy, max_tokens=700, model=model).text  # noqa: E731
+            manual_call = lambda pr, sy: prov_meta.generate(pr, system=sy, max_tokens=700, model=model).text  # noqa: E731
             made = backfill_manuals(registry, records_dir=textbook_dir, source_for=_source_for,
                                     llm_call=manual_call, provider=prov_name, limit=6)
             if made:
@@ -192,7 +195,7 @@ def run_cycle(
             logger.warning("채택 구제 실패: %s", e)
 
     # 2) Triage (에이전트)
-    tr = triage(cands, top_n=top_n, provider=prov, model=model, llm_call=llm_call)
+    tr = triage(cands, top_n=top_n, provider=prov_screen, model=model, llm_call=llm_call)
     selected = tr.selected
     cat_by_cid = {d.cid: d.category for d in tr.decisions}
 
@@ -219,12 +222,12 @@ def run_cycle(
             )
         except Exception as e:  # noqa: BLE001 — 신호 기록 실패가 사이클을 죽이지 않게
             logger.warning("ingest 실패(%s): %s", getattr(cand, "title", "?"), e)
-        verdict = read([doc], provider=prov, model=model, llm_call=llm_call).verdicts[0]
+        verdict = read([doc], provider=prov_screen, model=model, llm_call=llm_call).verdicts[0]
         decisions.append({"topic": cand.title, "next_action": verdict.next_action, "mode": verdict.mode})
 
         if verdict.sufficient and doc.status == "ok":
             hint = contrast_context(cand.title, kb_path=kb_path)
-            book = write_textbook(doc, contrast_hint=hint, provider=prov, model=model, llm_call=llm_call)  # ① Gemini 집필
+            book = write_textbook(doc, contrast_hint=hint, provider=prov_write, model=model, llm_call=llm_call)  # ① Gemini 집필
             cross = None
             if verifier_call is not None and _xmode != "off":
                 try:

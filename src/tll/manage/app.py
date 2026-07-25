@@ -25,7 +25,7 @@ from tll.author.models import SECTION_KEYS  # noqa: E402
 from tll.concepts.registry import DEFAULT_REGISTRY  # noqa: E402
 from tll.cost.fx import get_usd_krw  # noqa: E402
 from tll.cost.pricing import PRICES, PRICING_ASOF, PRICING_SOURCES  # noqa: E402
-from tll.cost.usage import DEFAULT_USAGE_PATH, available_months, monthly_report  # noqa: E402
+from tll.cost.usage import DEFAULT_USAGE_PATH, available_months, monthly_report, paid_summary  # noqa: E402
 from tll.present.store import DEFAULT_DIR, load_records  # noqa: E402
 from tll.rank import build_board  # noqa: E402
 from tll.shared.llm.select import provider_label, resolve_provider_name  # noqa: E402
@@ -35,6 +35,15 @@ USAGE_PATH = os.environ.get("TLL_USAGE_PATH", DEFAULT_USAGE_PATH)
 TEXTBOOK_DIR = os.environ.get("TLL_TEXTBOOK_DIR", DEFAULT_DIR)
 REGISTRY_PATH = os.environ.get("TLL_REGISTRY_PATH", DEFAULT_REGISTRY)
 SIGNALS_PATH = os.environ.get("TLL_SIGNALS_PATH", DEFAULT_SIGNALS)
+PAID_PROVIDER = os.environ.get("TLL_PAID_PROVIDER", "anthropic")   # 실제 청구되는 쪽(기본: Claude). 나머지는 무료 티어 가정.
+FREE_PROVIDER = os.environ.get("TLL_FREE_PROVIDER", "gemini" if PAID_PROVIDER != "gemini" else "anthropic")
+_STAGE_LABELS = {  # 용도(stage) → 화면 표시 라벨(이미 한글이지만 순서·안내문 목적)
+    "집필": "📝 집필(교과서 작성)",
+    "선별·판단": "🔎 선별·판단(후보 고르기)",
+    "교차검증": "🔀 교차검증(다른 모델로 재채점)",
+    "개념·설명서": "🏷️ 개념·설명서(이름 뽑기·README 요약)",
+    "기타(이전 기록)": "🗂️ 기타(용도 기록 이전 데이터)",
+}
 _SEC_LABELS = {
     "gist": "한눈에",
     "compare": "기존 기술과 비교",
@@ -254,43 +263,124 @@ def page_overview() -> None:
     st.caption("모델 전환: 에이전트 실행 시 `--provider gemini|anthropic` 또는 `.env` 의 `TLL_PROVIDER`.")
 
 
+def _money(usd: float, rate: float) -> str:
+    """원화 옆에 정확히 달러 — '₩786 · $0.5235'."""
+    return f"₩{usd * rate:,.0f} · ${usd:,.4f}"
+
+
+def _stage_table(rows: list[dict], rate: float) -> pd.DataFrame | None:
+    if not rows:
+        return None
+    return pd.DataFrame([
+        {
+            "용도": _STAGE_LABELS.get(r["stage"], r["stage"]),
+            "원화(₩)": round(r["cost_usd"] * rate),
+            "달러($)": round(r["cost_usd"], 4),
+            "호출": r["calls"],
+            "비중": f"{100 * r['cost_usd'] / (sum(x['cost_usd'] for x in rows) or 1.0):.0f}%",
+        }
+        for r in rows
+    ])
+
+
+def _render_period_tab(row: dict, label: str, rate: float) -> None:
+    st.markdown(f"### {_money(row['cost_usd'], rate)}")
+    models = ", ".join(row["models"]) if row["models"] else "사용 기록 없음"
+    st.caption(f"호출 {row['calls']:,}회 · 실제 쓰인 모델: {models}")
+
+    st.markdown("**무엇에 썼나**")
+    df = _stage_table(row["by_stage"], rate)
+    if df is None:
+        st.write(f"{label} 기록 없음.")
+        return
+    st.dataframe(df, width="stretch", hide_index=True)
+    st.caption(f"**{label} 합계 — {_money(row['cost_usd'], rate)} · 호출 {row['calls']:,}회**")
+    st.bar_chart(
+        pd.DataFrame(row["by_stage"]).assign(원화=lambda d: d["cost_usd"] * rate).set_index("stage")["원화"]
+    )
+
+
 def page_cost() -> None:
     st.header("⚙️ 관리 · 💰 비용")
     months = available_months(USAGE_PATH)
     if not months:
         st.info("아직 사용 기록이 없어요. 에이전트를 돌리면(`python -m tll.loop.loop`) 호출마다 토큰이 쌓여요.")
-    else:
+        return
+
+    rate, fx_src, fx_at = get_usd_krw()
+    paid_label = provider_label(PAID_PROVIDER)
+    free_label = provider_label(FREE_PROVIDER)
+    s = paid_summary(USAGE_PATH, paid_provider=PAID_PROVIDER)
+
+    # 무료/유료를 애매하지 않게 각각 한 줄로 명시.
+    st.success(f"🟢 **{free_label} API — 무료 티어 사용 중** · 실제 청구 **₩0**(정가는 참고용, 무료 쿼터 안에서만 유효)")
+    st.error(f"🔴 **{paid_label} API — 유료 사용 중** · 아래 금액이 이 화면이 추적하는 실제 청구액")
+
+    at = s["all_time"]
+    st.markdown(f"## 💰 누적 합계(전체 기간) — {_money(at['cost_usd'], rate)}")
+    st.caption(
+        f"{paid_label} 전체 호출 {at['calls']:,}회 · 환율 ₩{rate:,.0f}/$1 ({fx_src} {fx_at} 자동 갱신) · "
+        f"요금 기준일 {PRICING_ASOF} · 정가 기준(캐싱/배치 할인 미반영)"
+    )
+
+    st.divider()
+    tab_today, tab_week, tab_month = st.tabs(["📅 오늘", "🗓️ 이번주", "📆 이번달"])
+    with tab_today:
+        _render_period_tab(s["today"], "오늘", rate)
+    with tab_week:
+        _render_period_tab(s["week"], "이번주", rate)
+    with tab_month:
+        _render_period_tab(s["month"], "이번달", rate)
+
+    with st.expander("📋 상세 내역 — 전체 모델(무료 포함)·일별·단가표"):
         month = st.selectbox("월", months)
-        rep = monthly_report(path=USAGE_PATH, month=month)
+        rep = monthly_report(path=USAGE_PATH, month=month, paid_provider=PAID_PROVIDER)
         t = rep["total"]
-        rate, fx_src, fx_at = get_usd_krw()
-        c1, c2, c3 = st.columns(3)
-        c1.metric(f"{month} 합계", f"${t['cost_usd']:.4f}")
-        c1.caption(f"≈ ₩{t['cost_usd'] * rate:,.0f}")
-        c2.metric("호출 수", f"{t['calls']:,}")
-        c3.metric("토큰 in/out", f"{t['input_tokens']:,} / {t['output_tokens']:,}")
+        st.info(
+            f"🟢 **무료(정가 참고용)**: {free_label} · 🔴 **유료(실제청구)**: {paid_label} — "
+            "아래 표의 '실제청구' 열이 진짜 나가는 돈이고, '정가(참고)' 열은 무료 모델도 유료였다면 얼마였을지 보여주는 참고값이에요."
+        )
         st.caption(
-            f"요금 기준일 {PRICING_ASOF} · 환율 ₩{rate:,.0f}/$1 ({fx_src} {fx_at}) · "
-            "정가 기준(캐싱/배치 할인 미반영) · Gemini 무료 티어면 쿼터 내 실제 청구 $0."
+            f"{month} 전체 — 실제청구 {_money(t['paid_cost_usd'], rate)} "
+            f"· 정가합계(참고,무료포함) {_money(t['cost_usd'], rate)} · 호출 {t['calls']:,}회"
         )
         if rep["unpriced"]:
             st.warning("단가 미등록 모델(계산 $0): " + ", ".join(rep["unpriced"]))
-        st.subheader("일별 사용·요금")
+
+        def _with_paid_cols(df: pd.DataFrame, key_col: str) -> pd.DataFrame:
+            df["실제청구(₩)"] = (df["paid_cost_usd"] * rate).round().astype(int)
+            df["정가참고(₩)"] = (df["cost_usd"] * rate).round().astype(int)
+            df["정가참고($)"] = df["cost_usd"].round(4)
+            return df.rename(columns={
+                key_col: key_col, "calls": "호출수", "input_tokens": "입력토큰", "output_tokens": "출력토큰",
+            })
+
+        st.markdown("**일별**")
         days_df = pd.DataFrame(rep["days"])
         if not days_df.empty:
-            if "cost_usd" in days_df:
-                days_df["원화(₩)"] = (days_df["cost_usd"] * rate).round().astype(int)
-            st.dataframe(days_df, width="stretch")
-            st.bar_chart(days_df.set_index("date")["cost_usd"])
+            days_df = _with_paid_cols(days_df.rename(columns={"date": "날짜"}), "날짜")
+            st.dataframe(
+                days_df[["날짜", "실제청구(₩)", "정가참고(₩)", "정가참고($)", "호출수", "입력토큰", "출력토큰"]],
+                width="stretch", hide_index=True,
+            )
+            st.bar_chart(days_df.set_index("날짜")[["실제청구(₩)", "정가참고(₩)"]])
         else:
             st.write("이 달 기록 없음.")
-        st.subheader("모델별")
+
+        st.markdown("**모델별** (구분을 보면 왜 금액이 다르게 잡히는지 바로 보여요)")
         by_model_df = pd.DataFrame(rep["by_model"])
-        if "cost_usd" in by_model_df:
-            by_model_df["원화(₩)"] = (by_model_df["cost_usd"] * rate).round().astype(int)
-        st.dataframe(by_model_df, width="stretch")
-    with st.expander("적용 단가표 (per 1M tokens, USD)"):
-        st.dataframe(pd.DataFrame(PRICES), width="stretch")
+        if not by_model_df.empty:
+            by_model_df["구분"] = by_model_df["provider"].apply(
+                lambda p: "🟢 무료(정가만 참고)" if p != PAID_PROVIDER else "🔴 유료(실제청구)"
+            )
+            by_model_df = _with_paid_cols(by_model_df.rename(columns={"model": "모델"}), "모델")
+            st.dataframe(
+                by_model_df[["모델", "구분", "실제청구(₩)", "정가참고(₩)", "정가참고($)", "호출수", "입력토큰", "출력토큰"]],
+                width="stretch", hide_index=True,
+            )
+
+        st.markdown("**적용 단가표** (100만 토큰당, 달러 — 무료 모델도 '만약 유료였다면'의 참고 단가)")
+        st.dataframe(pd.DataFrame(PRICES), width="stretch", hide_index=True)
         st.caption("출처: " + " · ".join(f"[{k}]({v})" for k, v in PRICING_SOURCES.items()))
 
 
