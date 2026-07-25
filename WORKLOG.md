@@ -274,3 +274,192 @@
 - 순수 결정론(LLM 0), 전역상태 없음, to_source 로 schema.Source 편입 가능 → 나중 ReAct 의
   collect(topic, source) 액션으로 그대로 호출 가능. summary 가 재수집 판단(전환점 1)의 관찰이 된다.
 - 실측 함정 2개를 '추측 금지·실응답 먼저'로 코딩 전에 차단: HN fuzzy(RAG↔Rage), GeekNews RSS→실제 Atom.
+
+---
+
+## 2026-07-10 — [v3 전환] 자율 에이전트 재설계 + Scout(정찰) 1조각
+
+### 방향 전환 (기획서 v3)
+- 사용자 재확정: 주제를 사람이 넣는 게 아니라 **에이전트가 스스로 최신 기술을 발견**해 실시간으로
+  한국어 교과서를 만든다. 충실도는 북극성에서 **배경(최신성을 가능케 하는 안전벨트)**으로 재배치.
+- `docs/TLL_기획서_v3.md` 신설: 에이전트 작동 순서(Scout→Triage→Tracker→Reader→Author→
+  Fact-Check→Memory→Dashboard)를 척추로, 빌드도 그 순서. 기억(KB)을 Phase3→**중심**으로 승격.
+- 근거: STORM/Co-STORM(조사→집필·계속 갱신되는 마인드맵), deep research agent(브리핑+기억 루프),
+  CoALA/ReAct/Reflexion/Anthropic.
+
+### Scout(정찰) — `src/tll/scout/` (에이전트 순서 1단계)
+- 하는 일: 실시간 소스(HN 프론트페이지 + GeekNews 최근 피드) 폴링 → TrendCandidate 정규화
+  (등급·신선도·안정 id) → 최소 Memory(seen 로그)로 '지난 확인 이후 **새 것만**'.
+- **경계 라벨 정직화(중요, ERRORS #5)**: v3 초안은 Scout를 [에이전트]로 적었으나, '훑어서 새 것만'은
+  실제론 **결정론(폴링+집합차)**이다. 가치 판단('교과서 감이냐')은 다음 단계 **Triage(에이전트)**로 분리.
+- 재사용: `trends.fetch_top_stories`(HN 실시간), `compute_content_hash`(안정 id),
+  `grade_from_domain`(등급), `GeekNewsProvider.search("")`(빈 topic=토큰0=최근 피드 전체).
+- 신선도: `freshness.age_label` — 발행시각→"3시간 전"(한국어). now 주입식(테스트 가능).
+- 최소 Memory: `seen_store.SeenStore`(`data/memory/seen.json`). first_seen 박제, 원자적 저장,
+  키 정렬 출력 = 결정론. 이후 개념 KB로 확장(v3 §7).
+
+### 막힘→뚫음
+- **(샌드박스 네트워크)** allowlist 상 PyPI만 열리고 HN/GeekNews/GitHub는 프록시 403 →
+  **실호출은 사용자 머신**(`python -m tll.scout.scout`), 결정론 로직은 목(mock) 피드로 오프라인 완전 검증.
+- **(테스트 몽키패치)** `tll.scout` 의 `scout` 함수가 동명 서브모듈을 가려 `sys.modules["tll.scout.scout"]`로 패치.
+- **(샌드박스 git/삭제 잠금)** 이 마운트는 파일 생성·수정은 되나 **삭제(unlink)를 EPERM 으로 막음** →
+  `.git/index.lock` 을 못 지워 **커밋은 사용자 머신에서**. 파일 도구의 기존파일 수정(임시→교체)도 실패해
+  WORKLOG/ERRORS 는 bash append 로 기입.
+
+### 검증 (오프라인, 결정론) — 25개 체크 전부 PASS
+- age_label/unix_to_iso, HN 정규화(arxiv=1급·blog=3급·순위·cid), 신규성(run1 new=2→run2 0→run3 +1=1),
+  first_seen 박제, seen.json 키정렬, 소스 실패 격리(HN 403이어도 GeekNews 생존), 결정론(복제 store→같은 new).
+- ruff 0.15.21 → All checks passed.
+- 남은 것(정직): 실제 폴링·git 커밋은 사용자 머신. 다음 조각 = **Triage(에이전트 판단)**.
+
+## 2026-07-10 — [Triage] 선별 (에이전트 순서 2단계, 첫 '에이전트' 조각)
+- 하는 일: Scout 후보를 LLM이 '배울 가치 있는 IT/AI 기술이냐(교과서 감)' 판단 →
+  keep/category/worth/reason → 상위 N 선별. `src/tll/triage/`.
+- **경계**: 판단은 LLM(에이전트), 최종 선별(top-N 정렬)·집계는 결정론. LLM은 제목·소스·등급·신호만
+  보고 분류/가치판단만 — 원문 fetch·수치 생성 없음(DNA). 여기부터 '모델이 다음 행동을 고른다'.
+- 재사용: `shared/llm get_provider().generate(system=...)`, writer 의 JSON 추출 패턴
+  (펜스 제거 → `[ ]` 슬라이스 → json.loads).
+- 견고화: 잘못된 JSON/키없음/LLM에러 → 지어내지 않고 `summary.mode="error"` 정직 노출.
+  미판단 후보는 keep=False("미판단")로 누락 숨김 방지. 범위밖/중복 i 무시.
+  소스 라운드로빈(max_judge 컷에서 한국어 소스 보호).
+- 검증(오프라인, 목 LLM): **14체크 PASS** — 파싱·선별순서(worth desc)·top_n컷·펜스·
+  malformed 격리·미판단·빈입력·결정론·interleave 공정. ruff 통과.
+- 실제 LLM(Gemini) 호출은 사용자 머신: `python -m tll.triage.triage` (scout→triage 데모, res.candidates 전체 판단).
+- 다음: **Tracker** — 선별 주제의 공식 문서 '본문' 수집(그 "반쪽" 구멍 메우기).
+
+## 2026-07-10 — [Tracker] 추적 — 공식 문서 '본문' 수집 (에이전트 순서 3단계)
+- 하는 일: Triage 선별 주제의 링크를 따라가 **본문을 실제로 수집**(그 "검증 반쪽" 구멍 메우기). `src/tll/tracker/`.
+- **등급 정제(사용자 합의)**: '학술이냐'가 아니라 **원천 근접도(1차/2차/3차)**로. **제작사 공식 발표=1급(1차)**.
+  같은 1급도 성격 태그: `제작사`(자기발표=미검증)/`논문`(외부검증)/`레포`. 2차=뉴스, 3차=블로그·커뮤니티.
+  "제작사 주장 vs 논문 충돌"은 등급이 아니라 다출처 대조·충돌표기(Author/Verifier)가 처리 — 여기선 등급·태그만.
+- 구성: `grading.classify_source`(도메인→등급·성격), `extract.extract_text`(stdlib html.parser, 의존성0),
+  `tracker.track`(robots·rate limit 준수).
+- 정직 처리(지어내지 않음): 공식링크없음(HN 토론)=no_official, robots=blocked, 비HTML=non_html,
+  실패=fetch_error, 본문<200자='JS 렌더 가능' 경고, 레포='3자 여부 미확인' note.
+- 한계(정직): 등급표가 화이트리스트라 불완전(Tencent 등 놓치면 3급). '진짜 공식 소스 검색'은 다음 개선.
+- 검증(오프라인, 목 fetcher/robots): **23체크 PASS** — 등급분류·본문추출(script/style 제외)·상태 5종·
+  github note·본문빈약·max_docs·summary. ruff 통과.
+- 실제 fetch 는 사용자 머신: `python -m tll.tracker.tracker` (scout→triage→track 데모).
+- 다음: **Reader** — 가져온 본문을 읽고 이해·부족판정("더 찾자" ReAct 결정점).
+
+## 2026-07-10 — [Reader] 독해 — ReAct 결정점 (에이전트 순서 4단계)
+- 하는 일: Tracker 본문을 LLM이 읽고 "이걸로 이 기술이 뭔지 교과서를 쓸 수 있나" 판단 →
+  충분=proceed(집필) / 부족=collect_more("더 찾자"). **모델이 다음 행동을 고름 = 진짜 ReAct.**
+- 본문 근거 이해 요지(understanding) 추출(지어내지 않음). 부족하면 뭐가 없는지(missing) → 재수집 힌트.
+- 경계: 판단은 LLM. 단 status!=ok·본문<80자는 **결정론 precheck**로 LLM 없이 '부족'(뻔한 실패에 토큰 0).
+  실패·JSON 오류는 지어내지 않고 '부족+error'.
+- 검증(오프라인, 목 LLM): **13체크 PASS** — 충분/부족 분기·precheck(비ok·빈약)·이해추출·missing·
+  malformed 격리·펜스·결정론·**precheck는 LLM 미호출(호출 카운트로 증명)**. ruff 통과.
+- 실제 LLM은 사용자 머신: `python -m tll.reader.reader` (scout→triage→track→read 데모).
+- **'가져오기' 절반 완료**: Scout(찾기)→Triage(고르기)→Tracker(본문)→Reader(독해·판단).
+  다음부터 '집필' 절반: **Author**(한국어 교과서·대조유추).
+
+## 2026-07-10 — [Author] 집필 — 한국어 교과서 (에이전트 순서 5단계, '집필' 절반 시작)
+- 하는 일: Reader가 '충분' 판정한 본문으로 **한국어 교과서(정체 브리핑)** 집필. `src/tll/author/`.
+  §3 6섹션(뼈대·배경·**대조유추**·필요성·전망·quickstart) + one_liner + judgment + unverified. 문장별 [S1].
+- **원문 보존**: Source.body_text 에 원문을 담아 넘김 → **Fact-Check(L1)가 실제 문자열 대조** 가능
+  (그 "반쪽" 구멍이 여기서 데이터로 준비됨).
+- 대조·유추: 원문 근거는 [S1], 원문 밖 일반지식 비교는 (일반지식) 표시 → 이후 미확인(정직).
+- 재사용/적응: `analyst/writer.py` 패턴(프롬프트·JSON 파싱·정규화)을 단일 출처(TrackedDoc)용으로.
+- 견고화: 빈 본문·malformed JSON → AuthorError. author_all 은 한 건 실패가 전체를 안 죽임(개별 격리).
+  섹션 누락→"미확인" 채움, judgment level 정규화, unverified conflicting_sids 실존 sid만.
+- 검증(오프라인, 목 LLM): **18체크 PASS** — 조립·6섹션·대조·원문보존·[S1]·정규화·conflicting 필터·
+  섹션누락·빈본문·malformed·펜스·author_all 격리·결정론. ruff 통과.
+- 실제 LLM은 사용자 머신: `python -m tll.author.author` (scout→…→author, 실제 한국어 교과서 생성).
+- 다음: **Fact-Check** — 교과서 [S1] 인용을 원문(body_text)과 문자열 대조(L1) + 번역 대조.
+
+## 2026-07-10 — [Fact-Check] 검증 — 원문 대조 L1 + 수치 앵커링 (6단계, '반쪽' 구멍 메움)
+- 하는 일: Author 교과서를 **원문(body_text)과 대조**하는 결정론 검증(LLM=0). `src/tll/factcheck/`.
+  - phantom_citation(실존X 인용)·quote_mismatch(따옴표 인용이 원문에 없음) = 위반 → 제거.
+  - unsupported_number(원문에 없는 숫자)·uncited(미인용 사실문)·general_knowledge((일반지식)) = 미확인 플래그.
+  - **충실도%(원문근거)** = ok 사실문 / 전체 사실문. apply 로 위반 제거·비-ok 전부 unverified 이동, status 설정.
+- **"반쪽" 구멍 메움**: Phase 1 anchoring 은 원문 text 필드가 없어 title 을 근사로 썼다(프록시).
+  이제 Tracker→Author 가 body_text 를 보존 → **진짜 본문 문자열 대조**. 프록시였던 충실도가 **실측으로 승격**.
+- 결정론(LLM=0): 같은 입력 → 같은 판정(재현성). 검증기 자신은 환각 안 함(닻).
+- **정직한 한계**: '인용·수치·따옴표'의 원문 앵커링이지 완전한 의미 함의(NLI)는 아니다.
+  인용·숫자가 맞아도 의미가 미묘히 틀릴 수 있음(그건 LLM 판정 영역 → 코어에서 제외). 과장 금지.
+- 검증(오프라인, LLM 0): **18체크 PASS** — 6판정 분류·충실도 3/8·apply(제거·미확인5)·clean=verified 100%·
+  인용문 원문존재·결정론. ruff 통과.
+- 데모(사용자 머신): `python -m tll.factcheck.factcheck` (scout→…→author→factcheck, 충실도% 표시).
+- 다음: **Memory**(개념 KB=대조근거 + 신규성) → Dashboard → Loop.
+
+## 2026-07-10 — [Memory] 기억 — 개념 KB(대조·유추 엔진) + Reflexion lessons (7단계)
+- 하는 일: `src/tll/memory/`.
+  - **개념 KB(의미기억)**: 검증 교과서 → 개념 카드 upsert(같은 주제면 times_seen++·first_seen 보존).
+  - **recall/contrast_context**: 관련 개념 회상(용어 겹침) → Author 대조·유추 근거("기존과 뭐가 다른지"의 재료).
+  - **lessons(에피소드, Reflexion)**: 실패·교훈 기록 → 다음 시도 회피(loop 에서 사용).
+- **'스스로 학습'의 실체**: KB가 쌓일수록 대조가 좋아짐(Co-STORM 마인드맵 취지). '중심으로 올린' 조각.
+- CoALA 매핑: 의미기억=개념 KB, 에피소드=lessons, 절차=프롬프트/프로바이더(코드).
+- 저장 결정론(JSON·정렬·원자적), 전역상태 없음. **정직한 한계**: 회상은 영문 tech 토큰 겹침(어휘)이지
+  임베딩(의미) 아님 — 다른 이름의 유사 기술은 놓칠 수 있음(임베딩은 Phase 4).
+- Author 연결(contrast_context 주입)은 **Loop 단계에서** 배선(지금은 Memory 독립 완성).
+- 검증(오프라인, 순수 데이터): **18체크 PASS** — remember·upsert·recall(겹침·자기제외·무관제외)·
+  contrast_context·lessons(최신·kind)·정렬저장·손상복원. ruff 통과.
+- 데모(사용자 머신): `python -m tll.memory.memory` (전체 체인 → 검증 교과서 기억 → KB·회상 표시).
+- 다음: **Dashboard**(한국어 통합 뷰) → **Loop**(30분 자동).
+
+## 2026-07-10 — [Dashboard/Present] 한국어 대시보드 — 자체 완결 HTML (8단계)
+- 하는 일: 검증 교과서를 **서버 없이 브라우저로 여는 단일 HTML**로 산출. `src/tll/present/`.
+  최신순 카드 · 신선도("N시간 전") · **충실도%(색 배지)** · status · **원문 보기 링크** · 6섹션 · 미확인.
+- 왜 HTML(Streamlit 아님): 서버 불필요(파일 열기만)·의존성 0·순수 함수라 검증 용이·항상 최신.
+  기존 Streamlit 대시보드(`tll.dashboard`)는 그대로 — 이건 자율 교과서용 새 Presenter.
+- store: 교과서+지표를 JSON 저장(slug.json, 같은 주제 덮어써 최신 유지) → load_records → 렌더.
+- 안전: 모든 사용자 콘텐츠 HTML escape(스크립트 주입 차단). 순수 함수(같은 입력→같은 HTML).
+- 검증(오프라인, 순수): **12체크 PASS** — 주제·충실도배지·신선도·원문링크·섹션라벨·미확인·status·
+  최신순·유효HTML·escape·빈목록·store 왕복. ruff 통과. + 샘플 미리보기 HTML 생성.
+- 데모(사용자 머신): `python -m tll.present.html` (전체 체인 → 저장 → data/dashboard.html, 브라우저로 열기).
+- 다음(마지막): **Loop** — 전부를 30분마다 자동으로 감싸는 ReAct 스케줄러.
+
+## 2026-07-10 — [Loop] ReAct 루프 + 30분 스케줄러 — 에이전트 완성 (9단계, 마지막)
+- 하는 일: `src/tll/loop/`. run_cycle = 한 사이클(관찰→판단→행동):
+  Scout→Triage→(후보별)Track→Read→[충분:proceed→Author(+Memory 대조)→Fact-Check→Memory 기억→저장
+  / 부족:collect_more "더 찾자"→lesson→다음]→Dashboard.
+- **ReAct**: Reader의 per-후보 결정(proceed/collect_more)이 실제 제어 흐름을 가름.
+  "더 찾자"=다음 후보로(bounded 재수집) + Reflexion lesson 기록.
+- **안전장치**: target(발행 예산)·max_attempts(시도 상한=비용캡)·무진전 가드(발행0 표기).
+  run_forever(30분, only_new=True) = 자율 스케줄러.
+- **Memory 배선 완료**: 집필 시 contrast_context 주입 → 대조·유추가 KB를 실제로 씀(자기학습 폐루프).
+- **막힘→뚫음**: 파일도구 Edit가 author.py 를 손상(마운트 동기화 레이스)했는데 stale .pyc 가 통과로 위장(ERRORS #6)
+  → PYTHONPYCACHEPREFIX 캐시 우회로 실체 발견 → bash 전체 재작성으로 복구.
+- 검증(오프라인, 스마트 목 LLM+목 fetcher): **13체크 PASS** — 발행/더찾자 분기·시도상한·target·KB기억·
+  저장·대시보드·lessons·decisions·무진전 가드·결정론. **ruff(전체 src/tll) 통과·9조각 임포트 OK**.
+- 데모(사용자 머신): `python -m tll.loop.loop`(1사이클) · `python -m tll.loop.loop --watch`(30분 자동).
+- **★ 에이전트 9조각 전부 완성**: Scout·Triage·Tracker·Reader·Author·Fact-Check·Memory·Dashboard·Loop.
+
+## 2026-07-10 — [모델 선택] Gemini ↔ Claude 전환 + 대시보드 표시
+- 요청: 앤트로픽 키도 넣었으니 Gemini·Claude 골라 쓰고, 대시보드에 지금 뭘 쓰는지 표시 + 쉬운 전환.
+- `shared/llm/select.py`: resolve_provider_name(우선순위: 인자 > TLL_PROVIDER(.env/env) > gemini),
+  resolve_model_name(TLL_MODEL), provider_label. 미지값→기본 gemini.
+- Loop 배선: run_cycle(provider_name)→get_provider 로 프로바이더 생성→triage·reader·author 주입.
+  레코드·summary·대시보드에 provider 기록(llm_call 주입 테스트 시엔 생성 생략).
+- Dashboard: 헤더 "현재 사용 모델: Claude/Gemini" + 카드마다 만든 모델 배지(비교용).
+- **쉬운 전환 3가지**: `--provider anthropic|gemini`(일회) / `$env:TLL_PROVIDER="anthropic"`(세션) /
+  .env 에 `TLL_PROVIDER=`(영구 기본). 실행 시 '사용가능' 목록 출력.
+- 정직 고지: Claude 실호출은 사용자 머신(키·모델 claude-opus-4-8). 모델 안 맞으면 `TLL_MODEL` 로 교체.
+- 검증(오프라인): 코어 루프 회귀 통과 + 프로바이더 9체크(summary/레코드/대시보드/env/기본/라벨) PASS. ruff 전체 통과.
+- 파일도구 편집 손상 회피: store/html/loop 전부 bash `cat >` 전체 재작성 + 같은 명령 즉시 검증(ERRORS #6 교훈 적용).
+
+## 2026-07-10 — [관리>비용] Streamlit 관리 콘솔 + 실사용 토큰·요금 정확 계산
+- 요청: 관리>비용 탭 — 어떤 API 쓰는지·유료면 매일 얼마·월 합계. "정확하게."
+- UI 결정(사용자): 관리는 **Streamlit**(인터랙티브). 교과서 대시보드는 그대로 **HTML**(스트림릿 아님).
+  계산 엔진은 UI 무관 순수 파이썬 → 뷰 바꿔도 재작업 0.
+- **비용 엔진 `src/tll/cost/`** (추정 아니라 실측):
+  - pricing: 실제 공식 단가(웹 확인, 기준일 2026-07-10) — Opus 4.8 $5/$25, Gemini Flash-Lite $0.10/$0.40 등.
+    모델명 substring 매칭(구체→일반), 미등록·별칭은 정직 플래그.
+  - usage: **TrackingProvider** 가 프로바이더를 감싸 generate 마다 실제 토큰(provider.usage) JSONL 로깅(무침투).
+    monthly_report = 일별/모델별/월합계.
+  - 정직 고지: 정가 기준(캐싱·배치 할인 미반영), Gemini 무료 티어면 쿼터 내 실제 $0(유료 환산),
+    '...-latest' 별칭 단가는 추정.
+- Loop 배선: run_cycle 이 프로바이더를 TrackingProvider 로 감쌈 → 모든 사이클 호출 자동 집계.
+- **관리앱 `src/tll/manage/app.py`**: 사이드바 관리>[개요, 비용]. 비용=현재모델·월선택·KPI·일별표+막대차트·
+  모델별·단가표(출처). 실행 `streamlit run src/tll/manage/app.py`.
+- 검증(오프라인): 비용 엔진 **18체크 PASS**(정확계산·집계·TrackingProvider·미등록·월필터). 앱은 streamlit 미설치라
+  **가짜 st/pd 스텁으로 실제 exec** → 비용 화면 렌더·합계 $30.40 정확 확인. ruff 전체 통과. (실 구동은 사용자 .venv.)
+
+## 2026-07-10 — [통합] Streamlit 한 앱으로 합침 (교과서 + 관리·비용)
+- 사용자 지적: 교과서(HTML)와 관리(Streamlit)가 따로 열려 헷갈림 → "스트림릿 하나로 합쳐줘".
+- `manage/app.py` 통합: 사이드바 **📚 교과서 / ⚙️ 관리(→ 개요·비용)**. 교과서 탭은 `present.store` 의
+  같은 레코드를 읽어 렌더(데이터 공용, 재작업 0 — 엔진/뷰 분리 덕분). 실행 `streamlit run src/tll/manage/app.py` 한 곳.
+- Loop: HTML(data/dashboard.html)은 선택적 자동 export 로 남기되 안내 문구는 통합 앱 하나로 정리(F541 ruff --fix).
+- 검증(오프라인, 가짜 st/pd 스텁으로 두 화면 실제 exec): 교과서(제목 렌더)·비용(합계 $30 정확) PASS.
+  코어 루프·프로바이더 회귀 유지. ruff 전체 통과.

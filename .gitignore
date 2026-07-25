@@ -20,6 +20,16 @@ output/
 # 수집 원자료(디버그용, 휘발성 — 최종 브리핑 data/briefs 와 다름)
 data/collected/
 
+# Memory 런타임 상태(seen 로그·신호·손상 백업 등, 휘발성) — .gitkeep 만 추적
+data/memory/*.json
+data/memory/*.jsonl
+data/memory/*.bak
+
+# 대시보드 산출물·저장 교과서·사용량 로그(런타임 생성)
+data/*.html
+data/textbooks/
+data/cost/
+
 # 파이썬 패키징/도구 캐시
 *.egg-info/
 .ruff_cache/
@@ -27,3 +37,7 @@ data/collected/
 
 # Streamlit (로컬 시크릿은 절대 커밋 금지)
 .streamlit/secrets.toml
+
+# 채용 과제 제출물(실명·이메일·영상 등 개인정보 포함 — 절대 커밋 금지)
+제출/
+제출_대화원본_raw.md
